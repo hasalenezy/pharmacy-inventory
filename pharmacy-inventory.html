@@ -6,6 +6,9 @@
 <title>عهدة الأدوية</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <script>
+(function(){const t=localStorage.getItem('inv-theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})();
+</script>
+<script>
 // Load external scripts safely
 function loadScript(src, cb) {
   const s = document.createElement('script');
@@ -17,6 +20,11 @@ function loadScript(src, cb) {
 </script>
 <style>
 :root {
+  --bg:#f0f4f8; --surface:#ffffff; --surface2:#e8eef5; --border:#d1dce8;
+  --accent:#0077b6; --accent2:#0096c7; --warn:#f59e0b; --danger:#ef4444;
+  --text:#1a2332; --text-muted:#64748b; --success:#059669;
+}
+[data-theme="dark"] {
   --bg:#0a0f1e; --surface:#111827; --surface2:#1a2235; --border:#1e2d45;
   --accent:#00d4aa; --accent2:#0099ff; --warn:#f59e0b; --danger:#ef4444;
   --text:#e2e8f0; --text-muted:#64748b; --success:#10b981;
@@ -172,8 +180,25 @@ td{padding:12px 14px;font-size:13px;}
       <p>نظام جرد وإدارة المخزون الدوائي</p>
     </div>
   </div>
-  <div style="font-size:11px;color:var(--text-muted)" id="date-display"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="date-display" style="font-size:11px;text-align:left;line-height:1.6"></div>
+    <button id="theme-btn" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">🌙</button>
+    <div id="auth-area">
+      <button onclick="showAuthModal()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;padding:6px 14px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:12px;cursor:pointer">👤 دخول</button>
+    </div>
+  </div>
 </header>
+<!-- Weather Bar -->
+<div id="weather-bar" style="background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 20px;display:flex;align-items:center;justify-content:space-between;font-size:12px;flex-wrap:wrap;gap:6px">
+  <div style="display:flex;gap:16px;align-items:center">
+    <span>🌙 <span id="date-hijri" style="color:var(--accent);font-weight:600"></span></span>
+    <span>📅 <span id="date-miladi" style="color:var(--text-muted)"></span></span>
+  </div>
+  <div id="weather-info" style="display:flex;align-items:center;gap:6px;color:var(--text-muted)">
+    <span id="w-icon">🌤️</span><span id="w-temp" style="font-weight:700;color:var(--text)"></span>
+    <span id="w-desc"></span><span id="w-city" style="color:var(--accent)"></span>
+  </div>
+</div>
 
 <div class="alert-banner" id="alert-banner">
   <div class="alert-icon">🔔</div>
@@ -183,7 +208,62 @@ td{padding:12px 14px;font-size:13px;}
   </div>
 </div>
 
+<!-- Auth Modal -->
+<div id="auth-modal" style="display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:90%;max-width:400px">
+    <h3 style="font-size:16px;margin-bottom:18px;color:var(--accent2)" id="auth-title">تسجيل الدخول</h3>
+    <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:600">البريد الإلكتروني</label>
+      <input type="email" id="auth-email" placeholder="example@email.com" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:600">كلمة المرور</label>
+      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="doLogin()" style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">دخول</button>
+      <button onclick="closeAuthModal()" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">إلغاء</button>
+    </div>
+    <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--danger);margin-top:10px;display:none"></div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="add-user-modal" style="display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:16px;margin-bottom:18px;color:var(--accent2)">➕ إضافة مستخدم</h3>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الاسم</label><input type="text" id="um-name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">البريد</label><input type="email" id="um-email" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">كلمة المرور</label><input type="password" id="um-pass" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الدور</label>
+      <select id="um-role" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+        <option value="pharmacy-in">مشرف صيدلية داخلية</option>
+        <option value="pharmacy-out">مشرف صيدلية خارجية</option>
+        <option value="warehouse">موظف مستودع</option>
+        <option value="custodian">أمين عهدة</option>
+      </select>
+    </div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">القسم</label><input type="text" id="um-dept" placeholder="مثال: صيدلية الطوارئ" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <!-- Permissions -->
+    <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:10px">🔑 الصلاحيات</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px" id="um-perms">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-view-inv" checked> عرض المخزون</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-add-drug"> إضافة أدوية</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-edit-drug"> تعديل أدوية</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-del-drug"> حذف أدوية</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-req-drug" checked> طلب أدوية</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-approve"> الموافقة على الطلبات</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-dispense"> تسجيل الصرف</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-reports"> عرض التقارير</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-export"> تصدير Excel</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;background:var(--surface2);padding:8px;border-radius:8px"><input type="checkbox" id="p-narc"> عرض المخدرات</label>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="addUser()" style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">إضافة</button>
+      <button onclick="document.getElementById('add-user-modal').style.display='none'" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">إلغاء</button>
+    </div>
+    <div id="um-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--danger);margin-top:10px;display:none"></div>
+  </div>
+</div>
+
 <div class="tabs">
+  <div id="dash-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('dashboard',this)">📊 الداشبورد</button></div>
   <button class="tab-btn active" onclick="switchTab('inventory',this)">📋 الجرد</button>
   <button class="tab-btn" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button>
   <button class="tab-btn" onclick="switchTab('reports',this)">📊 التقارير</button>
@@ -192,6 +272,38 @@ td{padding:12px 14px;font-size:13px;}
 </div>
 
 <div class="main">
+
+<!-- TAB: DASHBOARD (admin only) -->
+<div class="tab-content" id="tab-dashboard">
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    <div class="stat-card total"><div class="num" style="color:var(--accent2)" id="d-total">0</div><div class="lbl">إجمالي الأصناف</div></div>
+    <div class="stat-card qty"><div class="num" style="color:var(--accent)" id="d-units">0</div><div class="lbl">إجمالي الوحدات</div></div>
+    <div class="stat-card warn"><div class="num" style="color:var(--warn)" id="d-pending">0</div><div class="lbl">طلبات معلقة</div></div>
+    <div class="stat-card danger"><div class="num" style="color:var(--danger)" id="d-expired">0</div><div class="lbl">منتهية</div></div>
+  </div>
+  <!-- Users Management -->
+  <div class="add-section">
+    <div class="section-title">👥 إدارة المستخدمين</div>
+    <button onclick="document.getElementById('add-user-modal').style.display='flex'" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:9px 20px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer;margin-bottom:14px">➕ إضافة مستخدم</button>
+    <div id="users-list"></div>
+  </div>
+  <!-- Recent Activity -->
+  <div class="add-section">
+    <div class="section-title">📋 آخر العمليات</div>
+    <div id="dash-activity"></div>
+  </div>
+  <!-- Monthly Summary -->
+  <div class="add-section">
+    <div class="section-title">📊 ملخص الاستهلاك الشهري</div>
+    <div style="display:flex;gap:10px;margin-bottom:14px;align-items:flex-end">
+      <div><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الشهر</label>
+        <input type="month" id="dash-month" style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+      <button onclick="loadDashMonthly()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 16px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">عرض</button>
+      <button onclick="exportDashMonthly()" id="dash-export-btn" style="display:none;background:var(--surface);border:1px solid #10b98140;border-radius:10px;padding:8px 16px;color:var(--success);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:600">📥 تصدير Excel</button>
+    </div>
+    <div id="dash-monthly-wrap"><div class="empty-state"><div class="icon">📊</div><p>اختر الشهر وانقر عرض</p></div></div>
+  </div>
+</div>
 
 <!-- TAB: INVENTORY -->
 <div class="tab-content active" id="tab-inventory">
@@ -2116,6 +2228,277 @@ updateDispSel();
 // Load heavy libraries after page is ready
 loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
 loadScript('https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js');
+
+// ── THEME ──
+window.toggleTheme = function() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(isDark) { document.documentElement.removeAttribute('data-theme'); document.getElementById('theme-btn').textContent='🌙'; localStorage.setItem('inv-theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); document.getElementById('theme-btn').textContent='☀️'; localStorage.setItem('inv-theme','dark'); }
+};
+if(localStorage.getItem('inv-theme')==='dark') document.getElementById('theme-btn').textContent='☀️';
+
+// ── DATE & WEATHER ──
+function updateDateTime() {
+  const now = new Date();
+  try { document.getElementById('date-hijri').textContent = now.toLocaleDateString('ar-SA-u-ca-islamic',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); } catch(e){}
+  document.getElementById('date-miladi').textContent = now.toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+}
+updateDateTime();
+setInterval(updateDateTime, 60000);
+
+async function loadWeather() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const {latitude:lat,longitude:lon} = pos.coords;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&timezone=auto`);
+      const d = await r.json();
+      const temp = Math.round(d.current.temperature_2m);
+      const code = d.current.weathercode;
+      const icons={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',51:'🌦️',61:'🌧️',63:'🌧️',80:'🌦️',95:'⛈️'};
+      const descs={0:'صحو',1:'قليل الغيوم',2:'غائم جزئياً',3:'غائم',51:'رذاذ',61:'مطر خفيف',63:'مطر',80:'زخات',95:'عاصفة'};
+      document.getElementById('w-icon').textContent = icons[code]||'🌤️';
+      document.getElementById('w-temp').textContent = temp+'°';
+      document.getElementById('w-desc').textContent = descs[code]||'';
+      const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar`);
+      const gd = await geo.json();
+      document.getElementById('w-city').textContent = gd.address?.city||gd.address?.town||gd.address?.state||'';
+    } catch(e){}
+  }, ()=>{}, {timeout:5000});
+}
+loadWeather();
+setInterval(loadWeather, 300000);
+
+// ── FIREBASE AUTH & USERS ──
+window.showAuthModal = function() { document.getElementById('auth-modal').style.display='flex'; document.getElementById('auth-email').value=''; document.getElementById('auth-pass').value=''; document.getElementById('auth-err').style.display='none'; };
+window.closeAuthModal = function() { document.getElementById('auth-modal').style.display='none'; };
+
+// Firebase config
+const FB_CONFIG = {
+  apiKey:"AIzaSyAAfw89A0uXaCnI23ltXBwaZzInldsrmJI",
+  authDomain:"phamilya-system.firebaseapp.com",
+  projectId:"phamilya-system",
+};
+
+let fbApp=null, fbAuth=null, fbDb=null, currentUser=null, currentUserData=null;
+
+function initFirebase() {
+  if(fbApp) return;
+  loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js', () => {
+    loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js', () => {
+      loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js', () => {
+        fbApp = firebase.initializeApp(FB_CONFIG);
+        fbAuth = firebase.auth();
+        fbDb = firebase.firestore();
+        fbAuth.onAuthStateChanged(async user => {
+          if(user) {
+            currentUser = user;
+            const snap = await fbDb.collection('inv_users').where('uid','==',user.uid).get();
+            if(!snap.empty) currentUserData = snap.docs[0].data();
+            else { currentUserData = {name:'Admin',role:'admin',uid:user.uid,email:user.email,permissions:{}}; await fbDb.collection('inv_users').doc(user.uid).set(currentUserData); }
+            onLogin();
+          } else { currentUser=null; currentUserData=null; onLogout(); }
+        });
+      });
+    });
+  });
+}
+initFirebase();
+
+function onLogin() {
+  const isAdmin = currentUserData?.role === 'admin';
+  document.getElementById('auth-area').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--accent);font-weight:700">${currentUserData?.name||''}</span>
+      ${isAdmin ? '<span style="font-size:10px;background:#7c3aed20;color:#a78bfa;padding:2px 8px;border-radius:20px;font-weight:700">أدمن</span>' : ''}
+      <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">خروج</button>
+    </div>`;
+  closeAuthModal();
+  if(isAdmin) {
+    document.getElementById('dash-tab-btn').style.display='block';
+    loadDashboard();
+  }
+  applyUserPermissions();
+}
+
+function onLogout() {
+  document.getElementById('auth-area').innerHTML = '<button onclick="showAuthModal()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;padding:6px 14px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:12px;cursor:pointer">👤 دخول</button>';
+  document.getElementById('dash-tab-btn').style.display='none';
+}
+
+function applyUserPermissions() {
+  if(!currentUserData || currentUserData.role==='admin') return;
+  const p = currentUserData.permissions || {};
+  // Hide add section if no addDrug perm
+  const addSec = document.querySelector('.add-section');
+  if(addSec && !p.addDrug) addSec.style.display='none';
+}
+
+window.doLogin = async function() {
+  if(!fbAuth) { document.getElementById('auth-err').textContent='جاري التحميل...'; document.getElementById('auth-err').style.display='block'; return; }
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const err = document.getElementById('auth-err');
+  err.style.display='none';
+  try { await fbAuth.signInWithEmailAndPassword(email, pass); }
+  catch(e) { err.textContent='بريد أو كلمة مرور غير صحيحة'; err.style.display='block'; }
+};
+
+window.doLogout = async function() {
+  await fbAuth.signOut();
+};
+
+window.addUser = async function() {
+  const name=document.getElementById('um-name').value.trim();
+  const email=document.getElementById('um-email').value.trim();
+  const pass=document.getElementById('um-pass').value;
+  const role=document.getElementById('um-role').value;
+  const dept=document.getElementById('um-dept').value.trim();
+  const err=document.getElementById('um-err');
+  err.style.display='none';
+  if(!name||!email||!pass){err.textContent='يرجى تعبئة كل الحقول';err.style.display='block';return;}
+  try {
+    // Create secondary app to avoid logging out admin
+    const sec = firebase.initializeApp(FB_CONFIG, 'secondary'+Date.now());
+    const secAuth = sec.auth();
+    const cred = await secAuth.createUserWithEmailAndPassword(email, pass);
+    const uid = cred.user.uid;
+    await secAuth.signOut();
+    const permissions = {
+      viewInv:document.getElementById('p-view-inv').checked,
+      addDrug:document.getElementById('p-add-drug').checked,
+      editDrug:document.getElementById('p-edit-drug').checked,
+      delDrug:document.getElementById('p-del-drug').checked,
+      reqDrug:document.getElementById('p-req-drug').checked,
+      approve:document.getElementById('p-approve').checked,
+      dispense:document.getElementById('p-dispense').checked,
+      reports:document.getElementById('p-reports').checked,
+      export:document.getElementById('p-export').checked,
+      viewNarc:document.getElementById('p-narc').checked,
+    };
+    await fbDb.collection('inv_users').doc(uid).set({name,email,role,dept,uid,permissions});
+    showMsg('✅ تم إضافة المستخدم');
+    document.getElementById('add-user-modal').style.display='none';
+    loadUsers();
+  } catch(e) { err.textContent=e.code==='auth/email-already-in-use'?'البريد مستخدم مسبقاً':'خطأ: '+e.message; err.style.display='block'; }
+};
+
+async function loadUsers() {
+  if(!fbDb) return;
+  const snap = await fbDb.collection('inv_users').get();
+  const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 صيدلية داخلية','pharmacy-out':'🏪 صيدلية خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
+  document.getElementById('users-list').innerHTML = snap.empty ? '<div class="empty-state"><div class="icon">👥</div><p>لا يوجد مستخدمون</p></div>' :
+    snap.docs.map(d => {
+      const u=d.data(); const isSelf=u.uid===currentUser?.uid;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-weight:700;font-size:14px">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${u.email} ${u.dept?'• '+u.dept:''}</div></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#10b98118;color:var(--success)">${roleLabels[u.role]||u.role}</span>
+          ${!isSelf?`<button onclick="deleteUser('${u.uid}','${u.name}')" style="background:none;border:1px solid #ef444430;border-radius:7px;padding:4px 10px;color:var(--danger);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">حذف</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+window.deleteUser = async function(uid, name) {
+  await fbDb.collection('inv_users').doc(uid).delete();
+  showMsg('🗑️ تم حذف '+name);
+  loadUsers();
+};
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  if(!fbDb) return;
+  const drugsLocal = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  const dispLocal = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
+  document.getElementById('d-total').textContent = drugsLocal.length;
+  document.getElementById('d-units').textContent = drugsLocal.reduce((s,d)=>s+(d.qty||0),0);
+  document.getElementById('d-pending').textContent = dispLocal.filter(d=>d.type==='out').length;
+  document.getElementById('d-expired').textContent = drugsLocal.filter(d=>{ const days=getDaysLeft(d.exp||''); return days<0; }).length;
+  // Recent activity
+  const recent = [...dispLocal].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
+  document.getElementById('dash-activity').innerHTML = recent.length ? recent.map(e=>{
+    const dt = new Date(e.date).toLocaleString('ar-SA');
+    const drug = drugsLocal.find(d=>String(d.id)===String(e.drugId));
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div><div style="font-weight:600;font-size:13px">${e.drugName||drug?.name||''}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${dt} ${e.dest?'• '+e.dest:''}</div></div>
+      <span style="font-weight:900;font-size:15px;color:${e.type==='out'?'var(--danger)':'var(--success)'}">${e.type==='out'?'−':'+'}${e.qty}</span>
+    </div>`;
+  }).join('') : '<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات</p></div>';
+  loadUsers();
+  // Set current month
+  const now = new Date();
+  document.getElementById('dash-month').value = now.toISOString().slice(0,7);
+}
+
+let dashMonthlyData = [];
+window.loadDashMonthly = function() {
+  const month = document.getElementById('dash-month').value;
+  if(!month) { showMsg('⚠️ اختر الشهر'); return; }
+  const [yr,mn] = month.split('-').map(Number);
+  const disp = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
+  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  const filtered = disp.filter(e=>{
+    const d=new Date(e.date); return d.getFullYear()===yr&&(d.getMonth()+1)===mn&&e.type==='out';
+  });
+  // Group by drug
+  const grouped={};
+  filtered.forEach(e=>{
+    if(!grouped[e.drugName]) grouped[e.drugName]={name:e.drugName,consumed:0,count:0};
+    grouped[e.drugName].consumed+=e.qty; grouped[e.drugName].count++;
+  });
+  dashMonthlyData = Object.values(grouped).sort((a,b)=>b.consumed-a.consumed);
+  // Add remaining qty
+  dashMonthlyData.forEach(r=>{
+    const drug = drugs.find(d=>(d.name||d.nameAr||'').toLowerCase().includes(r.name.toLowerCase()));
+    r.remaining = drug?.qty||0;
+  });
+  const total=dashMonthlyData.reduce((s,r)=>s+r.consumed,0);
+  document.getElementById('dash-monthly-wrap').innerHTML = dashMonthlyData.length ?
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="stat-card"><div class="num" style="color:var(--danger)">${total}</div><div class="lbl">إجمالي الاستهلاك</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--success)">${dashMonthlyData.length}</div><div class="lbl">أصناف مستهلكة</div></div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>اسم الدواء</th><th>الاستهلاك</th><th>المتبقي</th><th>عدد العمليات</th></tr></thead>
+      <tbody>${dashMonthlyData.map((r,i)=>`<tr>
+        <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
+        <td style="font-weight:700">${r.name}</td>
+        <td><span style="background:#ef444415;color:var(--danger);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">−${r.consumed}</span></td>
+        <td><span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${r.remaining}</span></td>
+        <td style="color:var(--text-muted)">${r.count}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>` :
+    '<div class="empty-state"><div class="icon">📊</div><p>لا توجد عمليات صرف في هذا الشهر</p></div>';
+  document.getElementById('dash-export-btn').style.display = dashMonthlyData.length ? 'inline-block' : 'none';
+};
+
+window.exportDashMonthly = function() {
+  if(!dashMonthlyData.length){showMsg('⚠️ لا توجد بيانات');return;}
+  if(typeof XLSX==='undefined'){showMsg('⚠️ جاري تحميل المكتبة...');return;}
+  const month = document.getElementById('dash-month').value;
+  const rows=[['اسم الدواء','الاستهلاك الشهري','المتبقي','عدد العمليات']];
+  dashMonthlyData.forEach(r=>rows.push([r.name,r.consumed,r.remaining,r.count]));
+  rows.push([]);
+  rows.push(['إجمالي الاستهلاك',dashMonthlyData.reduce((s,r)=>s+r.consumed,0)]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:28},{wch:15},{wch:12},{wch:14}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الاستهلاك الشهري');
+  const wbout=XLSX.write(wb,{bookType:'xlsx',type:'base64'});
+  const a=document.createElement('a');
+  a.href='data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'+wbout;
+  a.download='استهلاك_'+month+'.xlsx';document.body.appendChild(a);a.click();document.body.removeChild(a);
+  showMsg('✅ تم التصدير');
+};
+
+// Update switchTab to handle dashboard
+const _origSwitchTab = switchTab;
+window.switchTab = function(name, btn) {
+  _origSwitchTab(name, btn);
+  if(name==='dashboard') loadDashboard();
+};
+
 </script>
 <div class="toast" id="toast" style="opacity:0"></div>
 </body>
