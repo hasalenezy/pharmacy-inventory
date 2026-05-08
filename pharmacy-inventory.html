@@ -586,15 +586,66 @@ td{padding:12px 14px;font-size:13px;}
 </div>
 
 <script>
-let drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+let drugs = [];
 let dispenses = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
 let currentFilter='all';
 let stream=null;
 let charts={};
 
+// Save dispenses to localStorage (kept local)
+// Drugs are now in Firebase Firestore
 function save(){
-  localStorage.setItem('pharma-drugs',JSON.stringify(drugs));
   localStorage.setItem('pharma-disp',JSON.stringify(dispenses));
+  // Drugs saved to Firebase in saveDrugsToFirebase()
+}
+
+async function saveDrugsToFirebase() {
+  if(!fbDb) {
+    // Fallback to localStorage if Firebase not ready
+    localStorage.setItem('pharma-drugs',JSON.stringify(drugs));
+    return;
+  }
+  // Use batch write for efficiency
+  try {
+    const batch = fbDb.batch();
+    // Delete all existing drugs
+    const existing = await fbDb.collection('inv_drugs').get();
+    existing.docs.forEach(d => batch.delete(d.ref));
+    // Add all current drugs
+    drugs.forEach(d => {
+      const ref = fbDb.collection('inv_drugs').doc(String(d.id));
+      batch.set(ref, {...d, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+    });
+    await batch.commit();
+  } catch(e) {
+    console.warn('Firebase save failed, using localStorage:', e);
+    localStorage.setItem('pharma-drugs',JSON.stringify(drugs));
+  }
+}
+
+async function loadDrugsFromFirebase() {
+  if(!fbDb) {
+    // Fallback to localStorage
+    drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+    return;
+  }
+  try {
+    const snap = await fbDb.collection('inv_drugs').get();
+    if(!snap.empty) {
+      drugs = snap.docs.map(d => d.data());
+    } else {
+      // First time - migrate from localStorage if any
+      const local = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+      if(local.length > 0) {
+        drugs = local;
+        await saveDrugsToFirebase();
+        showMsg('✅ تم نقل البيانات للسحابة');
+      }
+    }
+  } catch(e) {
+    console.warn('Firebase load failed, using localStorage:', e);
+    drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  }
 }
 
 const now = new Date();
@@ -626,27 +677,34 @@ function updateAlerts(){
   }).join('<br>');
 }
 
-function addDrug(){
+async function addDrug(){
   const name=document.getElementById('inp-name').value.trim();
   const type=document.getElementById('inp-type').value;
   const qty=document.getElementById('inp-qty').value;
   const exp=document.getElementById('inp-exp').value;
   const note=document.getElementById('inp-note').value.trim();
   const category=document.getElementById('inp-category').value;
-  if(!name)return alert('يرجى إدخال اسم الدواء');
-  if(!qty||qty<0)return alert('يرجى إدخال الكمية');
-  if(!exp)return alert('يرجى إدخال تاريخ الانتهاء');
-  drugs.push({id:Date.now(),name,type,qty:+qty,exp,note,category});
-  save();renderInventory();updateAlerts();updateDispSel();
+  if(!name)return showMsg('⚠️ يرجى إدخال اسم الدواء');
+  if(!qty||qty<0)return showMsg('⚠️ يرجى إدخال الكمية');
+  if(!exp)return showMsg('⚠️ يرجى إدخال تاريخ الانتهاء');
+  const newDrug = {id:Date.now(),name,type,qty:+qty,exp,note,category,
+    addedBy: currentUserData?.name||'',
+    addedAt: new Date().toISOString()};
+  drugs.push(newDrug);
+  await saveDrugsToFirebase();
+  renderInventory();updateAlerts();updateDispSel();
   document.getElementById('inp-name').value='';
   document.getElementById('inp-qty').value='';
   document.getElementById('inp-exp').value='';
   document.getElementById('inp-note').value='';
+  showMsg('✅ تم إضافة الدواء');
 }
 
-function deleteDrug(id){
+async function deleteDrug(id){
   drugs=drugs.filter(d=>String(d.id)!==String(id));
-  save();renderInventory();updateAlerts();updateDispSel();
+  await saveDrugsToFirebase();
+  renderInventory();updateAlerts();updateDispSel();
+  showMsg('🗑️ تم الحذف');
 }
 
 function openEdit(id){
@@ -660,7 +718,7 @@ function openEdit(id){
   document.getElementById('edit-note').value=d.note||'';
   document.getElementById('modal').classList.add('show');
 }
-function saveEdit(){
+async function saveEdit(){
   const id=document.getElementById('edit-id').value;
   const d=drugs.find(x=>String(x.id)===String(id));
   d.name=document.getElementById('edit-name').value.trim();
@@ -669,7 +727,9 @@ function saveEdit(){
   d.exp=document.getElementById('edit-exp').value;
   d.category=document.getElementById('edit-category').value;
   d.note=document.getElementById('edit-note').value.trim();
-  save();renderInventory();updateAlerts();updateDispSel();closeModal();
+  await saveDrugsToFirebase();
+  renderInventory();updateAlerts();updateDispSel();closeModal();
+  showMsg('✅ تم التعديل');
 }
 function closeModal(){document.getElementById('modal').classList.remove('show');}
 
@@ -722,7 +782,9 @@ function addDispense(){
   };
   dispenses.unshift(entry);
   save();
-  // Also save to Firebase for admin dashboard
+  // Save updated drug quantity to Firebase
+  await saveDrugsToFirebase();
+  // Also log activity to Firebase for admin dashboard
   if(fbDb) {
     fbDb.collection('inv_activity').add({
       ...entry,
@@ -2374,6 +2436,7 @@ function buildTabsForRole() {
     warehouse: [
       {id:'wh-requests', label:'📦 الطلبات الواردة', fn:'loadWarehouseRequests()'},
       {id:'inventory',   label:'💊 أدوية المستودع',  fn:'loadWhInventory()'},
+      // No dispense tab for warehouse - deduction happens automatically on request approval
     ],
     custodian:      [],
   };
@@ -2561,7 +2624,7 @@ window.deleteUser = async function(uid, name) {
 // ── DASHBOARD ──
 async function loadDashboard() {
   if(!fbDb) return;
-  const drugsLocal = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  const drugsLocal = [...drugs]; // from Firebase
   const dispLocal = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
   document.getElementById('d-total').textContent = drugsLocal.length;
   document.getElementById('d-units').textContent = drugsLocal.reduce((s,d)=>s+(d.qty||0),0);
@@ -2632,7 +2695,7 @@ window.loadDashMonthly = function() {
   if(!month) { showMsg('⚠️ اختر الشهر'); return; }
   const [yr,mn] = month.split('-').map(Number);
   const disp = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
-  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  // drugs loaded from Firebase globally
   const filtered = disp.filter(e=>{
     const d=new Date(e.date); return d.getFullYear()===yr&&(d.getMonth()+1)===mn&&e.type==='out';
   });
@@ -2888,18 +2951,20 @@ window.approveRequest = async function(id, fromUid) {
   const note = document.getElementById('wh-note-'+id)?.value.trim()||'';
   const snap = await fbDb.collection('pharm_requests').doc(id).get();
   const r = snap.data();
-  // Get updated quantities
+  // Get updated quantities from input fields
   const updatedItems = (r.items||[]).map((item,i)=>{
-    const newQty = +document.getElementById(`wh-qty-${id}-${i}`)?.value || item.qty;
-    return {...item, qty:newQty};
+    const inputEl = document.getElementById(`wh-qty-${id}-${i}`);
+    const newQty = inputEl ? (+inputEl.value||item.qty) : item.qty;
+    return {...item, qty: newQty};
   });
-  // Deduct from inventory
-  const drugsLocal = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  // ── Auto deduct from Firebase inventory ──
   updatedItems.forEach(item=>{
-    const d = drugsLocal.find(x=>(x.name||x.nameAr||'').toLowerCase().includes(item.drug.toLowerCase()));
-    if(d) d.qty = Math.max(0, (d.qty||0)-item.qty);
+    const d = drugs.find(x=>(x.name||x.nameAr||'').toLowerCase().includes(item.drug.toLowerCase()));
+    if(d) {
+      d.qty = Math.max(0, (d.qty||0) - item.qty);
+    }
   });
-  localStorage.setItem('pharma-drugs', JSON.stringify(drugsLocal));
+  await saveDrugsToFirebase();
   renderInventory();
   await fbDb.collection('pharm_requests').doc(id).update({status:'approved',items:updatedItems,warehouseNote:note,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
   await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`✅ تمت الموافقة على طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
@@ -3003,7 +3068,6 @@ document.addEventListener('click', e => {
 
 // ═══ USER BACKUP / RESTORE / EXPORT / IMPORT ═══
 window.userBackup = async function() {
-  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
   const disp = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
   if(!drugs.length && !disp.length) { showMsg('⚠️ لا توجد بيانات للنسخ'); return; }
   const backup = {
@@ -3044,7 +3108,7 @@ window.userRestore = async function(e) {
     try {
       const backup = JSON.parse(ev.target.result);
       if(!backup.drugs || !Array.isArray(backup.drugs)) { showMsg('❌ ملف غير صحيح'); return; }
-      const existing = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+      const existing = [...drugs]; // use global drugs from Firebase
       let added = 0;
       backup.drugs.forEach(d => {
         if(!d.nameAr && !d.name) return;
@@ -3061,7 +3125,8 @@ window.userRestore = async function(e) {
         existing.push(newDrug);
         added++;
       });
-      localStorage.setItem('pharma-drugs', JSON.stringify(existing));
+      drugs = existing;
+      await saveDrugsToFirebase();
       showMsg('✅ تم استعادة ' + added + ' دواء');
       renderInventory();
       updateAlerts();
@@ -3073,7 +3138,6 @@ window.userRestore = async function(e) {
 
 window.userExportExcel = function() {
   if(typeof XLSX === 'undefined') { showMsg('⚠️ جاري تحميل المكتبة...'); return; }
-  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
   if(!drugs.length) { showMsg('⚠️ لا توجد بيانات'); return; }
   const rows = [['اسم الدواء','النوع','التصنيف','الكمية','تاريخ الانتهاء','ملاحظات']];
   drugs.forEach(d => {
@@ -3102,7 +3166,7 @@ window.userImportExcel = function(e) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
       if(!rows.length) { showMsg('⚠️ الملف فارغ'); return; }
-      const existing = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+      const existing = [...drugs]; // use global drugs from Firebase
       let added = 0;
       rows.forEach(row => {
         const keys = Object.keys(row);
@@ -3132,7 +3196,8 @@ window.userImportExcel = function(e) {
         });
         added++;
       });
-      localStorage.setItem('pharma-drugs', JSON.stringify(existing));
+      drugs = existing;
+      await saveDrugsToFirebase();
       showMsg('✅ تم استيراد ' + added + ' دواء');
       renderInventory();
       updateAlerts();
@@ -3149,11 +3214,22 @@ window.loadWhInventory = function() {
   const wrap = document.getElementById('tab-inventory');
   if(!wrap) return;
 
-  // Hide add/edit/delete sections
-  setTimeout(()=>{
-    document.querySelectorAll('.add-section,.camera-section,.cam-section').forEach(el=>el.style.display='none');
-    document.querySelectorAll('.btn-edit,.btn-del').forEach(el=>el.style.display='none');
-  }, 300);
+  // Hide ALL edit controls for warehouse - read only view
+  const hideControls = () => {
+    document.querySelectorAll('.add-section,.camera-section,.cam-section,.controls,.filter-bar').forEach(el=>{
+      // Keep search/filter bar but hide add button
+      if(el.classList.contains('controls') || el.classList.contains('filter-bar')) return;
+      el.style.display='none';
+    });
+    document.querySelectorAll('.btn-edit,.btn-del,.btn-cam,.btn-cam-stop,.btn-add,.btn-disp').forEach(el=>el.style.display='none');
+    // Hide the action column in inventory table
+    const actionCols = document.querySelectorAll('th:last-child, td:last-child');
+    // Hide dispense buttons specifically
+    document.querySelectorAll('[onclick*="openDispModal"],[onclick*="deleteDrug"],[onclick*="openEdit"]').forEach(el=>el.style.display='none');
+  };
+  hideControls();
+  setTimeout(hideControls, 500);
+  setTimeout(hideControls, 1500);
 
   // Inject search bar if not there
   if(!document.getElementById('wh-search-wrap')) {
@@ -3182,8 +3258,6 @@ window.loadWhInventory = function() {
 window.renderWhInventory = function() {
   const q = (document.getElementById('wh-inv-search')?.value||'').trim().toLowerCase();
   const filter = document.getElementById('wh-inv-filter')?.value || 'all';
-  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
-
   let list = drugs.filter(d=>{
     const name = (d.name||d.nameAr||'').toLowerCase();
     const nameAr = (d.nameAr||d.name||'').toLowerCase();
