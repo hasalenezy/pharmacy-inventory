@@ -2347,15 +2347,44 @@ const FB_CONFIG = {
   apiKey:"AIzaSyAAfw89A0uXaCnI23ltXBwaZzInldsrmJI",
   authDomain:"phamilya-system.firebaseapp.com",
   projectId:"phamilya-system",
+  storageBucket:"phamilya-system.firebasestorage.app",
+  messagingSenderId:"880532245730",
+  appId:"1:880532245730:web:82f0b388cab7fba4ed62bb"
 };
 
 let fbApp=null, fbAuth=null, fbDb=null, currentUser=null, currentUserData=null;
 
-function initFirebase() {
-  if(fbApp) return;
-  setupFirebase();
-}
-initFirebase();
+// ── FIREBASE INIT ──
+const FB_APP = firebase.initializeApp(FB_CONFIG);
+fbApp = FB_APP;
+fbAuth = firebase.auth();
+fbDb = firebase.firestore();
+
+fbAuth.onAuthStateChanged(async user => {
+  if(user) {
+    currentUser = user;
+    try {
+      const snap = await fbDb.collection('inv_users').where('uid','==',user.uid).get();
+      if(!snap.empty) {
+        currentUserData = snap.docs[0].data();
+      } else {
+        currentUserData = {name:'Admin',role:'admin',uid:user.uid,email:user.email,permissions:{}};
+        await fbDb.collection('inv_users').doc(user.uid).set(currentUserData);
+      }
+      await loadDrugsFromFirebase();
+      renderInventory(); updateAlerts(); updateDispSel();
+      onLogin();
+    } catch(e) {
+      console.error('Auth error:', e);
+      currentUserData = {name:'Admin',role:'admin',uid:user.uid,email:user.email,permissions:{}};
+      onLogin();
+    }
+  } else {
+    currentUser = null;
+    currentUserData = null;
+    onLogout();
+  }
+});
 
 function onLogin() {
   const ls = document.getElementById('login-screen');
