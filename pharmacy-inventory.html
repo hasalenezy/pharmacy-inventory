@@ -169,6 +169,10 @@ td{padding:12px 14px;font-size:13px;}
   th,td{padding:9px 9px;font-size:12px;}
 }
 </style>
+<!-- Firebase loaded directly in head for reliability -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -2349,24 +2353,7 @@ let fbApp=null, fbAuth=null, fbDb=null, currentUser=null, currentUserData=null;
 
 function initFirebase() {
   if(fbApp) return;
-  loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js', () => {
-    loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js', () => {
-      loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js', () => {
-        fbApp = firebase.initializeApp(FB_CONFIG);
-        fbAuth = firebase.auth();
-        fbDb = firebase.firestore();
-        fbAuth.onAuthStateChanged(async user => {
-          if(user) {
-            currentUser = user;
-            const snap = await fbDb.collection('inv_users').where('uid','==',user.uid).get();
-            if(!snap.empty) currentUserData = snap.docs[0].data();
-            else { currentUserData = {name:'Admin',role:'admin',uid:user.uid,email:user.email,permissions:{}}; await fbDb.collection('inv_users').doc(user.uid).set(currentUserData); }
-            onLogin();
-          } else { currentUser=null; currentUserData=null; onLogout(); }
-        });
-      });
-    });
-  });
+  setupFirebase();
 }
 initFirebase();
 
