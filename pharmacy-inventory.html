@@ -661,7 +661,7 @@ function updateAlerts(){
   }).join('<br>');
 }
 
-async function addDrug(){
+async window.addDrug = function(){
   const name=document.getElementById('inp-name').value.trim();
   const type=document.getElementById('inp-type').value;
   const qty=document.getElementById('inp-qty').value;
@@ -684,14 +684,14 @@ async function addDrug(){
   showMsg('✅ تم إضافة الدواء');
 }
 
-async function deleteDrug(id){
+async window.deleteDrug = function(id){
   drugs=drugs.filter(d=>String(d.id)!==String(id));
   await saveDrugsToFirebase();
   renderInventory();updateAlerts();updateDispSel();
   showMsg('🗑️ تم الحذف');
 }
 
-function openEdit(id){
+window.openEdit = function(id){
   const d=drugs.find(x=>String(x.id)===String(id));
   document.getElementById('edit-id').value=id;
   document.getElementById('edit-name').value=d.name;
@@ -702,7 +702,7 @@ function openEdit(id){
   document.getElementById('edit-note').value=d.note||'';
   document.getElementById('modal').classList.add('show');
 }
-async function saveEdit(){
+async window.saveEdit = function(){
   const id=document.getElementById('edit-id').value;
   const d=drugs.find(x=>String(x.id)===String(id));
   d.name=document.getElementById('edit-name').value.trim();
@@ -715,9 +715,9 @@ async function saveEdit(){
   renderInventory();updateAlerts();updateDispSel();closeModal();
   showMsg('✅ تم التعديل');
 }
-function closeModal(){document.getElementById('modal').classList.remove('show');}
+window.closeModal = function(){document.getElementById('modal').classList.remove('show');}
 
-function openDispModal(id){
+window.openDispModal = function(id){
   const d=drugs.find(x=>String(x.id)===String(id));
   document.getElementById('dm-id').value=id;
   document.getElementById('dm-name').value=d.name;
@@ -725,7 +725,7 @@ function openDispModal(id){
   document.getElementById('dm-note').value='';
   document.getElementById('disp-modal').classList.add('show');
 }
-function saveDispModal(){
+window.saveDispModal = function(){
   const id=document.getElementById('dm-id').value;
   const type=document.getElementById('dm-type').value;
   const qty=+document.getElementById('dm-qty').value;
@@ -738,7 +738,7 @@ function saveDispModal(){
   dispenses.unshift({id:Date.now(),drugId:id,drugName:d.name,type,qty,note,dest,date:new Date().toISOString()});
   save();renderInventory();renderDispense();closeDispModal();
 }
-function closeDispModal(){document.getElementById('disp-modal').classList.remove('show');}
+window.closeDispModal = function(){document.getElementById('disp-modal').classList.remove('show');}
 
 function updateDispSel(){
   const sel=document.getElementById('disp-drug');
@@ -746,7 +746,7 @@ function updateDispSel(){
   sel.innerHTML='<option value="">— اختر دواء —</option>'+drugs.map(d=>`<option value="${d.id}">${d.name} (${d.qty})</option>`).join('');
   sel.value=cur;
 }
-function addDispense(){
+window.addDispense = function(){
   const drugId=+document.getElementById('disp-drug').value;
   const type=document.getElementById('disp-type').value;
   const qty=+document.getElementById('disp-qty').value;
@@ -781,7 +781,7 @@ function addDispense(){
   showMsg('✅ تم تسجيل الحركة');
 }
 
-function setFilter(f,btn){
+window.setFilter = function(f,btn){
   currentFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');renderInventory();
@@ -884,7 +884,7 @@ function switchTab(name,btn){
   if(name==='dispense'){updateDispSel();renderDispense();}
 }
 
-function downloadTemplate(){
+window.downloadTemplate = function(){
   const ws = XLSX.utils.aoa_to_sheet([
     ['اسم الدواء','النوع','الكمية','تاريخ الانتهاء','ملاحظات'],
     ['أموكسيسيلين 500mg','كبسول',100,'2026-12-01','مثال'],
@@ -961,7 +961,7 @@ function importExcel(e){
   reader.readAsBinaryString(file);
 }
 
-function exportCSV(){
+window.exportCSV = function(){
   if(!drugs.length) return alert('لا توجد بيانات للتصدير');
 
   const catLabel = c => c==='narcotic'?'مخدر':c==='psycho'?'نفسي':'عادي';
@@ -1021,7 +1021,7 @@ function exportCSV(){
 }
 
 // CAMERA + CLAUDE VISION
-async function startCamera(){
+async window.startCamera = function(){
   try{
     stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
     document.getElementById('cam-video').srcObject=stream;
@@ -1031,7 +1031,7 @@ async function startCamera(){
     document.getElementById('ocr-status').textContent='الكاميرا تعمل — وجّه العلبة ثم التقط';
   }catch(e){alert('تعذر الوصول للكاميرا. جرب رفع صورة.');}
 }
-function stopCamera(){
+window.stopCamera = function(){
   if(stream)stream.getTracks().forEach(t=>t.stop());
   stream=null;
   document.getElementById('video-wrap').style.display='none';
@@ -1039,7 +1039,7 @@ function stopCamera(){
   document.getElementById('btn-stop-cam').style.display='none';
   document.getElementById('ocr-status').textContent='جاهز للقراءة';
 }
-async function snapPhoto(){
+async window.snapPhoto = function(){
   const video=document.getElementById('cam-video');
   const canvas=document.getElementById('canvas');
   canvas.width=video.videoWidth;canvas.height=video.videoHeight;
@@ -1774,7 +1774,7 @@ function onDrugInput(){
   list.style.display = 'block';
 }
 
-function selectDrug(i, fullName, form, cat){
+window.selectDrug = function(i, fullName, form, cat){
   const list = document.getElementById('autocomplete-list');
   const d = list._matches[i];
   document.getElementById('inp-name').value = d.ar + ' ' + d.conc;
@@ -2050,7 +2050,7 @@ function renderCatalog() {
   tbody.innerHTML = rows;
 }
 
-function exportCatalogExcel() {
+window.exportCatalogExcel = function() {
   const q = document.getElementById('catalog-search').value.trim().toLowerCase();
   const catFilter = document.getElementById('catalog-cat').value;
   let list = [...DRUG_DB];
@@ -2082,7 +2082,7 @@ function exportCatalogExcel() {
 // ── MONTHLY REPORT ──
 let monthlyData = [];
 
-function generateMonthlyReport(){
+window.generateMonthlyReport = function(){
   const month = document.getElementById('report-month').value;
   const dest = document.getElementById('report-dest').value;
   if(!month){showMsg('اختر الشهر أولاً');return;}
@@ -2146,7 +2146,7 @@ function generateMonthlyReport(){
   document.getElementById('export-monthly-btn').dataset.month = monthName;
 }
 
-function exportMonthlyExcel(){
+window.exportMonthlyExcel = function(){
   if(!monthlyData.length){showMsg('لا توجد بيانات');return;}
   const monthName = document.getElementById('export-monthly-btn').dataset.month || '';
 
@@ -2187,7 +2187,7 @@ function showMsg(msg){
 let recognition = null;
 let isListening = false;
 
-function toggleVoice() {
+window.toggleVoice = function() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert('المتصفح لا يدعم الإدخال الصوتي. جرب Chrome أو Safari على الجوال.');
@@ -2244,7 +2244,7 @@ function resetMic() {
 }
 
 // ── BACKUP & RESTORE ──
-function backupData(){
+window.backupData = function(){
   if(!drugs.length && !dispenses.length){
     showMsg('⚠️ لا توجد بيانات للنسخ الاحتياطي');
     return;
@@ -2414,7 +2414,7 @@ function onLogout() {
 
 
 
-function buildTabsForRole() {
+window.buildTabsForRole = function() {
   if(!currentUserData) return;
   const role = currentUserData.role;
   const p = currentUserData.permissions || {};
@@ -2575,7 +2575,7 @@ window.addUser = async function() {
   } catch(e) { err.textContent=e.code==='auth/email-already-in-use'?'البريد مستخدم مسبقاً':'خطأ: '+e.message; err.style.display='block'; }
 };
 
-async function loadUsers() {
+async window.loadUsers = function() {
   if(!fbDb) return;
   const snap = await getDocs(collection(fbDb,'inv_users'));
   const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 صيدلية داخلية','pharmacy-out':'🏪 صيدلية خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
@@ -2626,7 +2626,7 @@ window.deleteUser = async function(uid, name) {
 };
 
 // ── DASHBOARD ──
-async function loadDashboard() {
+async window.loadDashboard = function() {
   if(!fbDb) return;
   const drugsLocal = [...drugs]; // from Firebase
   const dispLocal = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
@@ -2898,7 +2898,7 @@ window.setWhFilter = function(f,btn) {
   loadWarehouseRequests();
 };
 
-async function loadWarehouseRequests() {
+async window.loadWarehouseRequests = function() {
   if(!fbDb) return;
   // Avoid compound index - filter manually
   const snap = await getDocs(collection(fbDb,'pharm_requests'));
