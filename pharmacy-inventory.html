@@ -270,11 +270,11 @@ td{padding:12px 14px;font-size:13px;}
 
 <div class="tabs">
   <div id="dash-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('dashboard',this)">📊 الداشبورد</button></div>
-  <button class="tab-btn active admin-only" id="tab-btn-inventory" onclick="switchTab('inventory',this)">📋 الجرد</button>
-  <button class="tab-btn admin-only" id="tab-btn-dispense" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button>
-  <button class="tab-btn admin-only" id="tab-btn-reports" onclick="switchTab('reports',this)">📊 التقارير</button>
-  <button class="tab-btn admin-only" id="tab-btn-monthly" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
-  <button class="tab-btn admin-only" id="tab-btn-catalog" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
+  <button class="tab-btn active" id="tab-btn-inventory" onclick="switchTab('inventory',this)">📋 الجرد</button>
+  <button class="tab-btn" id="tab-btn-dispense" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button>
+  <button class="tab-btn" id="tab-btn-reports" onclick="switchTab('reports',this)">📊 التقارير</button>
+  <button class="tab-btn" id="tab-btn-monthly" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
+  <button class="tab-btn" id="tab-btn-catalog" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
   <div id="req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('pharmacy-req',this)">📝 طلب أدوية</button></div>
   <div id="wh-req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('wh-requests',this)">📦 الطلبات الواردة</button></div>
 </div>
@@ -2314,11 +2314,8 @@ function initFirebase() {
 initFirebase();
 
 function onLogin() {
-  const isAdmin = currentUserData?.role === 'admin';
-  // Hide login screen
   const ls = document.getElementById('login-screen');
   if(ls) ls.style.display='none';
-  // Update auth area
   const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 داخلية','pharmacy-out':'🏪 خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
   document.getElementById('auth-area').innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
@@ -2326,10 +2323,7 @@ function onLogin() {
       <span style="font-size:10px;background:var(--surface2);color:var(--accent);padding:2px 8px;border-radius:20px;font-weight:700">${roleLabels[currentUserData?.role]||currentUserData?.role||''}</span>
       <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">خروج</button>
     </div>`;
-  if(isAdmin) {
-    document.getElementById('dash-tab-btn').style.display='block';
-  }
-  applyUserPermissions();
+  buildTabsForRole();
   setupNotifListener();
   if('Notification' in window) Notification.requestPermission();
 }
@@ -2344,51 +2338,79 @@ function onLogout() {
 
 
 
-function applyUserPermissions() {
+function buildTabsForRole() {
   if(!currentUserData) return;
   const role = currentUserData.role;
   const p = currentUserData.permissions || {};
 
-  if(role === 'admin') {
-    // Admin: show ALL tabs
-    document.querySelectorAll('.admin-only').forEach(el => el.style.removeProperty('display'));
-    document.getElementById('dash-tab-btn').style.display = 'block';
-    // Switch to inventory
-    const invBtn = document.getElementById('tab-btn-inventory');
-    if(invBtn) invBtn.click();
-    return;
+  // ── حدد التبويبات حسب الدور ──
+  const tabsDef = {
+    admin: [
+      {id:'dashboard', label:'📊 الداشبورد', fn:'loadDashboard()'},
+      {id:'inventory',  label:'📋 الجرد',      fn:''},
+      {id:'dispense',   label:'🔄 حركة الصرف', fn:''},
+      {id:'reports',    label:'📊 التقارير',   fn:''},
+      {id:'monthly',    label:'📅 الشهري',     fn:''},
+      {id:'catalog',    label:'📚 قائمة الأدوية', fn:''},
+    ],
+    'pharmacy-in':  [{id:'pharmacy-req', label:'📝 طلب أدوية',        fn:'loadMyPharmRequests()'}],
+    'pharmacy-out': [{id:'pharmacy-req', label:'📝 طلب أدوية',        fn:'loadMyPharmRequests()'}],
+    warehouse:      [{id:'wh-requests',  label:'📦 الطلبات الواردة',  fn:'loadWarehouseRequests()'}],
+    custodian:      [],
+  };
+
+  // أمين العهدة - حسب الصلاحيات
+  if(role === 'custodian') {
+    if(p.viewInv)  tabsDef.custodian.push({id:'inventory',    label:'📋 الجرد',           fn:''});
+    if(p.approve)  tabsDef.custodian.push({id:'wh-requests',  label:'📦 الطلبات',         fn:'loadWarehouseRequests()'});
+    if(p.reqDrug)  tabsDef.custodian.push({id:'pharmacy-req', label:'📝 طلب أدوية',       fn:'loadMyPharmRequests()'});
+    if(p.reports)  tabsDef.custodian.push({id:'reports',      label:'📊 التقارير',        fn:''});
+    if(p.export)   tabsDef.custodian.push({id:'monthly',      label:'📅 الشهري',          fn:''});
   }
 
-  // Non-admin: keep admin-only tabs hidden (CSS already hides them)
-  // Hide dashboard
-  const dashBtn = document.getElementById('dash-tab-btn');
-  if(dashBtn) dashBtn.style.display = 'none';
+  const tabs = tabsDef[role] || [];
 
-  if(role === 'pharmacy-in' || role === 'pharmacy-out') {
-    // Show only: طلب أدوية
-    document.getElementById('req-tab-btn').style.display = 'block';
-    setTimeout(()=>{
-      const btn = document.querySelector('#req-tab-btn .tab-btn');
-      if(btn) { btn.classList.add('active'); switchTab('pharmacy-req', btn); }
-    }, 500);
-  }
+  // ── أخفِ كل التبويبات الحالية وأعد بناءها ──
+  const tabsBar = document.querySelector('.tabs');
+  if(!tabsBar) return;
 
-  else if(role === 'warehouse') {
-    // Show only: الطلبات الواردة
-    document.getElementById('wh-req-tab-btn').style.display = 'block';
-    setTimeout(()=>{
-      const btn = document.querySelector('#wh-req-tab-btn .tab-btn');
-      if(btn) { btn.classList.add('active'); switchTab('wh-requests', btn); }
-    }, 500);
-  }
+  // Hide all existing tab buttons
+  tabsBar.querySelectorAll('.tab-btn').forEach(b => b.style.display = 'none');
+  document.getElementById('dash-tab-btn').style.display = 'none';
+  document.getElementById('req-tab-btn').style.display = 'none';
+  document.getElementById('wh-req-tab-btn').style.display = 'none';
 
-  else if(role === 'custodian') {
-    // Show tabs based on permissions
-    if(p.viewInv) {
-      const invBtn = document.getElementById('tab-btn-inventory');
-      if(invBtn) { invBtn.style.removeProperty('display'); invBtn.classList.add('active'); switchTab('inventory', invBtn); }
+  // Remove any previously injected dynamic tabs
+  tabsBar.querySelectorAll('.dynamic-tab').forEach(b => b.remove());
+
+  if(!tabs.length) return;
+
+  // Inject new tab buttons
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn dynamic-tab' + (i===0?' active':'');
+    btn.textContent = t.label;
+    btn.onclick = function() {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      const tabEl = document.getElementById('tab-'+t.id);
+      if(tabEl) tabEl.classList.add('active');
+      if(t.fn) eval(t.fn);
+    };
+    tabsBar.appendChild(btn);
+
+    // Activate first tab
+    if(i===0) {
+      document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+      const firstTab = document.getElementById('tab-'+t.id);
+      if(firstTab) firstTab.classList.add('active');
+      if(t.fn) setTimeout(()=>eval(t.fn), 300);
     }
-    if(p.approve) document.getElementById('wh-req-tab-btn').style.display = 'block';
+  });
+
+  // Custodian inventory restrictions
+  if(role==='custodian') {
     setTimeout(()=>{
       if(!p.addDrug) document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none');
       if(!p.delDrug) document.querySelectorAll('.btn-del').forEach(el=>el.style.display='none');
@@ -2396,6 +2418,9 @@ function applyUserPermissions() {
     }, 800);
   }
 }
+
+// Keep for compatibility
+function applyUserPermissions() { buildTabsForRole(); }
 
 window.doLogin = async function() {
   const err = document.getElementById('auth-err');
@@ -2466,16 +2491,42 @@ async function loadUsers() {
   document.getElementById('users-list').innerHTML = snap.empty ? '<div class="empty-state"><div class="icon">👥</div><p>لا يوجد مستخدمون</p></div>' :
     snap.docs.map(d => {
       const u=d.data(); const isSelf=u.uid===currentUser?.uid;
-      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-        <div><div style="font-weight:700;font-size:14px">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div>
-          <div style="font-size:12px;color:var(--text-muted)">رقم وظيفي: ${u.empId||''} ${u.dept?'• '+u.dept:''}</div></div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#10b98118;color:var(--success)">${roleLabels[u.role]||u.role}</span>
-          ${!isSelf?`<button onclick="deleteUser('${u.uid}','${u.name}')" style="background:none;border:1px solid #ef444430;border-radius:7px;padding:4px 10px;color:var(--danger);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">حذف</button>`:''}
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${!isSelf?'10px':'0'}">
+          <div><div style="font-weight:700;font-size:14px">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div>
+            <div style="font-size:12px;color:var(--text-muted)">رقم وظيفي: ${u.empId||''} ${u.dept?'• '+u.dept:''}</div></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#10b98118;color:var(--success)">${roleLabels[u.role]||u.role}</span>
+            ${!isSelf?`<button onclick="deleteUser('${u.uid}','${u.name}')" style="background:none;border:1px solid #ef444430;border-radius:7px;padding:4px 10px;color:var(--danger);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">حذف</button>`:''}
+          </div>
         </div>
+        ${!isSelf ? `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px">
+          <div style="font-size:11px;color:var(--accent);font-weight:700;margin-bottom:8px">🔑 الصلاحيات:</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px">
+            ${['viewInv:عرض المخزون','addDrug:إضافة أدوية','editDrug:تعديل أدوية','delDrug:حذف أدوية',
+               'reqDrug:طلب أدوية','approve:قبول الطلبات','dispense:تسجيل الصرف','reports:التقارير',
+               'export:تصدير Excel','viewNarc:عرض المخدرات'].map(item => {
+              const [key,label] = item.split(':');
+              const checked = (u.permissions||{})[key] === true;
+              return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;padding:5px 8px;background:var(--surface2);border-radius:7px">
+                <input type="checkbox" ${checked?'checked':''} onchange="updatePerm('${u.uid}','${key}',this.checked)" style="cursor:pointer">
+                ${label}
+              </label>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
       </div>`;
     }).join('');
 }
+
+window.updatePerm = async function(uid, key, val) {
+  if(!fbDb) return;
+  const updateData = {};
+  updateData['permissions.' + key] = val;
+  await fbDb.collection('inv_users').doc(uid).update(updateData);
+  showMsg('✅ تم تحديث الصلاحية');
+};
 
 window.deleteUser = async function(uid, name) {
   await fbDb.collection('inv_users').doc(uid).delete();
@@ -2646,7 +2697,7 @@ window.submitPharmacyRequest = async function() {
   playReqSound();
   showMsg('✅ تم إرسال الطلب للمستودع');
   clearRequestList();
-  loadMyRequests();
+  loadMyPharmRequests();
 };
 
 function playReqSound() {
@@ -2663,7 +2714,7 @@ function playReqSound() {
   } catch(e){}
 }
 
-async function loadMyRequests() {
+async function loadMyPharmRequests() {
   if(!fbDb||!currentUser) return;
   const snap = await fbDb.collection('pharm_requests').where('fromUid','==',currentUser.uid).orderBy('createdAt','desc').get();
   const wrap = document.getElementById('my-pharm-requests');
@@ -2872,7 +2923,7 @@ window.switchTab = function(name, btn) {
   _origSwitchTab(name, btn);
   if(name==='dashboard') loadDashboard();
   if(name==='wh-requests') loadWarehouseRequests();
-  if(name==='pharmacy-req') loadMyRequests();
+  if(name==='pharmacy-req') loadMyPharmRequests();
 };
 
 </script>
