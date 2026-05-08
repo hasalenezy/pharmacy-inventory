@@ -207,28 +207,7 @@ td{padding:12px 14px;font-size:13px;}
   </div>
 </div>
 
-<!-- Full Login Screen -->
-<div id="login-screen" style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#e8f4fd 0%,#f0f8ff 50%,#e8f0fe 100%)">
-  <div style="background:#fff;border:1px solid #d1dce8;border-radius:24px;padding:44px 36px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,119,182,0.15);text-align:center">
-    <div style="width:72px;height:72px;background:linear-gradient(135deg,#0077b6,#0096c7);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(0,119,182,0.3)">
-      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect x="18" y="8" width="8" height="28" rx="2" fill="white"/><rect x="8" y="18" width="28" height="8" rx="2" fill="white"/></svg>
-    </div>
-    <h1 style="font-size:22px;font-weight:900;color:#1a2332;margin-bottom:4px">عهدة <span style="color:#0077b6">الأدوية</span></h1>
-    <p style="font-size:12px;color:#64748b;margin-bottom:28px">نظام إدارة المخزون الدوائي</p>
-    <div style="margin-bottom:14px;text-align:right">
-      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">الرقم الوظيفي</label>
-      <input type="text" id="auth-empid" placeholder="أدخل رقمك الوظيفي" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'">
-    </div>
-    <div style="margin-bottom:20px;text-align:right">
-      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">كلمة المرور</label>
-      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,#0077b6,#0096c7);border:none;border-radius:12px;padding:13px;color:#fff;font-family:Cairo,sans-serif;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(0,119,182,0.3)">دخول</button>
-    <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-top:12px;display:none"></div>
-    <div style="margin-top:20px;font-size:11px;color:#64748b">© 2026 PharmaTec — جميع الحقوق محفوظة</div>
-  </div>
-</div>
+
 
 <!-- Add User Modal -->
 <div id="add-user-modal" style="display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
@@ -3413,6 +3392,29 @@ window.switchTab = function(name, btn) {
 <div class="toast" id="toast" style="opacity:0"></div>
 <div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);margin-top:20px">
   © 2026 PharmaTec — جميع الحقوق محفوظة | نظام عهدة الأدوية
+</div>
+
+<!-- Full Login Screen -->
+<div id="login-screen" style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#e8f4fd 0%,#f0f8ff 50%,#e8f0fe 100%)">
+  <div style="background:#fff;border:1px solid #d1dce8;border-radius:24px;padding:44px 36px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,119,182,0.15);text-align:center">
+    <div style="width:72px;height:72px;background:linear-gradient(135deg,#0077b6,#0096c7);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(0,119,182,0.3)">
+      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect x="18" y="8" width="8" height="28" rx="2" fill="white"/><rect x="8" y="18" width="28" height="8" rx="2" fill="white"/></svg>
+    </div>
+    <h1 style="font-size:22px;font-weight:900;color:#1a2332;margin-bottom:4px">عهدة <span style="color:#0077b6">الأدوية</span></h1>
+    <p style="font-size:12px;color:#64748b;margin-bottom:28px">نظام إدارة المخزون الدوائي</p>
+    <div style="margin-bottom:14px;text-align:right">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">الرقم الوظيفي</label>
+      <input type="text" id="auth-empid" placeholder="أدخل رقمك الوظيفي" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'">
+    </div>
+    <div style="margin-bottom:20px;text-align:right">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">كلمة المرور</label>
+      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,#0077b6,#0096c7);border:none;border-radius:12px;padding:13px;color:#fff;font-family:Cairo,sans-serif;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(0,119,182,0.3)">دخول</button>
+    <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-top:12px;display:none"></div>
+    <div style="margin-top:20px;font-size:11px;color:#64748b">© 2026 PharmaTec — جميع الحقوق محفوظة</div>
+  </div>
 </div>
 </body>
 </html>
