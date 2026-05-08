@@ -2394,6 +2394,10 @@ initFirebase();
 function onLogin() {
   const ls = document.getElementById('login-screen');
   if(ls) ls.style.display='none';
+  // Load drugs from Firebase for all roles
+  loadDrugsFromFirebase().then(()=>{
+    renderInventory(); updateAlerts(); updateDispSel();
+  });
   const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 داخلية','pharmacy-out':'🏪 خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
   document.getElementById('auth-area').innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
@@ -3214,22 +3218,16 @@ window.loadWhInventory = function() {
   const wrap = document.getElementById('tab-inventory');
   if(!wrap) return;
 
-  // Hide ALL edit controls for warehouse - read only view
-  const hideControls = () => {
-    document.querySelectorAll('.add-section,.camera-section,.cam-section,.controls,.filter-bar').forEach(el=>{
-      // Keep search/filter bar but hide add button
-      if(el.classList.contains('controls') || el.classList.contains('filter-bar')) return;
-      el.style.display='none';
-    });
-    document.querySelectorAll('.btn-edit,.btn-del,.btn-cam,.btn-cam-stop,.btn-add,.btn-disp').forEach(el=>el.style.display='none');
-    // Hide the action column in inventory table
-    const actionCols = document.querySelectorAll('th:last-child, td:last-child');
-    // Hide dispense buttons specifically
+  // Hide add/edit/delete - keep table visible
+  setTimeout(()=>{
+    document.querySelectorAll('.add-section,.camera-section,.cam-section').forEach(el=>el.style.display='none');
     document.querySelectorAll('[onclick*="openDispModal"],[onclick*="deleteDrug"],[onclick*="openEdit"]').forEach(el=>el.style.display='none');
-  };
-  hideControls();
-  setTimeout(hideControls, 500);
-  setTimeout(hideControls, 1500);
+  }, 300);
+
+  // Reload drugs from Firebase first to ensure latest data
+  loadDrugsFromFirebase().then(()=>{
+    renderWhInventory();
+  });
 
   // Inject search bar if not there
   if(!document.getElementById('wh-search-wrap')) {
@@ -3320,7 +3318,7 @@ window.switchTab = function(name, btn) {
   if(name==='dashboard') loadDashboard();
   if(name==='wh-requests') loadWarehouseRequests();
   if(name==='pharmacy-req') loadMyPharmRequests();
-  if(name==='inventory' && currentUserData?.role==='warehouse') setTimeout(loadWhInventory, 100);
+  if(name==='inventory' && currentUserData?.role==='warehouse') { loadDrugsFromFirebase().then(()=>{ loadWhInventory(); }); }
 };
 
 </script>
