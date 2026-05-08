@@ -707,16 +707,32 @@ function addDispense(){
   const type=document.getElementById('disp-type').value;
   const qty=+document.getElementById('disp-qty').value;
   const note=document.getElementById('disp-note').value.trim();
-  if(!drugId)return alert('اختر دواء');
-  if(!qty||qty<=0)return alert('أدخل كمية صحيحة');
+  if(!drugId)return showMsg('⚠️ اختر دواء');
+  if(!qty||qty<=0)return showMsg('⚠️ أدخل كمية صحيحة');
   const d=drugs.find(x=>x.id===drugId);
-  if(type==='out'&&qty>d.qty)return alert(`الكمية المتاحة: ${d.qty}`);
+  if(type==='out'&&qty>d.qty)return showMsg(`⚠️ الكمية المتاحة: ${d.qty}`);
   d.qty=type==='out'?d.qty-qty:d.qty+qty;
   const dest=document.getElementById('disp-dest').value;
-  dispenses.unshift({id:Date.now(),drugId,drugName:d.name,type,qty,note,dest,date:new Date().toISOString()});
-  save();renderInventory();renderDispense();updateDispSel();
+  const entry = {
+    id:Date.now(), drugId, drugName:d.name,
+    type, qty, note, dest,
+    date: new Date().toISOString(),
+    by: currentUserData?.name || 'غير محدد',
+    byRole: currentUserData?.role || ''
+  };
+  dispenses.unshift(entry);
+  save();
+  // Also save to Firebase for admin dashboard
+  if(fbDb) {
+    fbDb.collection('inv_activity').add({
+      ...entry,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(e=>console.warn('Activity log error:', e));
+  }
+  renderInventory();renderDispense();updateDispSel();
   document.getElementById('disp-qty').value='';
   document.getElementById('disp-note').value='';
+  showMsg('✅ تم تسجيل الحركة');
 }
 
 function setFilter(f,btn){
@@ -2367,11 +2383,16 @@ function buildTabsForRole() {
     if(p.viewInv)  tabsDef.custodian.push({id:'inventory',    label:'📋 الجرد',           fn:''});
     if(p.approve)  tabsDef.custodian.push({id:'wh-requests',  label:'📦 الطلبات',         fn:'loadWarehouseRequests()'});
     if(p.reqDrug)  tabsDef.custodian.push({id:'pharmacy-req', label:'📝 طلب أدوية',       fn:'loadMyPharmRequests()'});
+    if(p.dispense) tabsDef.custodian.push({id:'dispense',     label:'🔄 حركة الصرف',      fn:''});
     if(p.reports)  tabsDef.custodian.push({id:'reports',      label:'📊 التقارير',        fn:''});
     if(p.export)   tabsDef.custodian.push({id:'monthly',      label:'📅 الشهري',          fn:''});
   }
 
-  const tabs = tabsDef[role] || [];
+  let tabs = tabsDef[role] ? [...tabsDef[role]] : [];
+  // Add dispense tab if permission granted for pharmacy roles
+  if((role==='pharmacy-in'||role==='pharmacy-out') && currentUserData.permissions?.dispense) {
+    tabs.push({id:'dispense', label:'🔄 حركة الصرف', fn:''});
+  }
 
   // ── أخفِ كل التبويبات الحالية وأعد بناءها ──
   const tabsBar = document.querySelector('.tabs');
@@ -2551,25 +2572,25 @@ async function loadDashboard() {
   const allReqs = reqSnap.docs.map(d=>({id:d.id,...d.data()}));
   document.getElementById('d-pending').textContent = allReqs.filter(r=>r.status==='pending').length;
 
-  // ── ACTIVITY LOG: merge local dispenses + Firebase requests ──
+  // ── ACTIVITY LOG from Firebase ──
   const actWrap = document.getElementById('dash-activity');
   actWrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px">⏳ جاري التحميل...</div>';
 
-  // Local dispenses
-  const localActs = dispLocal.map(e=>({
-    time: new Date(e.date||0).getTime(),
-    type: 'dispense',
-    label: `${e.type==='out'?'📤 صرف':'📥 استلام'} — ${e.drugName||''} (${e.qty||0})`,
-    user: e.by || 'غير محدد',
-    dest: e.dest || '',
-    color: e.type==='out' ? 'var(--danger)' : 'var(--success)',
-    status: ''
+  // Get dispense activities from Firebase
+  const actSnap = await fbDb.collection('inv_activity').get().catch(()=>({docs:[]}));
+  const fbActs = actSnap.docs.map(d=>({
+    time: d.data().createdAt?.seconds ? d.data().createdAt.seconds*1000 : new Date(d.data().date||0).getTime(),
+    label: `${d.data().type==='out'?'📤 صرف':'📥 استلام'} — ${d.data().drugName||''} (${d.data().qty||0})`,
+    user: d.data().by || 'غير محدد',
+    dest: d.data().dest || '',
+    color: d.data().type==='out' ? 'var(--danger)' : 'var(--success)',
+    status: '',
+    approvedBy: ''
   }));
 
   // Firebase pharmacy requests
   const reqActs = allReqs.map(r=>({
     time: r.createdAt?.seconds ? r.createdAt.seconds*1000 : 0,
-    type: 'request',
     label: `📝 طلب أدوية — ${r.items?.length||0} صنف`,
     user: r.fromName || r.fromDept || 'غير محدد',
     dest: r.warehouseNote ? `رد المستودع: ${r.warehouseNote}` : '',
@@ -2578,17 +2599,16 @@ async function loadDashboard() {
     approvedBy: r.updatedBy || ''
   }));
 
-  // Merge and sort by time
-  const allActs = [...localActs, ...reqActs].sort((a,b)=>b.time-a.time).slice(0,20);
+  const allActs = [...fbActs, ...reqActs].sort((a,b)=>b.time-a.time).slice(0,30);
 
   if(!allActs.length) {
-    actWrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات</p></div>';
+    actWrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات بعد</p></div>';
   } else {
     actWrap.innerHTML = allActs.map(a=>{
       const dt = a.time ? new Date(a.time).toLocaleString('ar-SA') : '';
       return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:10px">
         <div style="flex:1">
-          <div style="font-weight:700;font-size:13px;color:var(--text)">${a.label}</div>
+          <div style="font-weight:700;font-size:13px">${a.label}</div>
           <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--accent)">👤 ${a.user}</span>
             ${a.approvedBy?`<span style="font-size:11px;color:var(--text-muted)">• قبل بواسطة: ${a.approvedBy}</span>`:''}
