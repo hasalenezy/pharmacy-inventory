@@ -270,11 +270,11 @@ td{padding:12px 14px;font-size:13px;}
 
 <div class="tabs">
   <div id="dash-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('dashboard',this)">📊 الداشبورد</button></div>
-  <button class="tab-btn active" onclick="switchTab('inventory',this)">📋 الجرد</button>
-  <button class="tab-btn" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button>
-  <button class="tab-btn" onclick="switchTab('reports',this)">📊 التقارير</button>
-  <button class="tab-btn" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
-  <button class="tab-btn" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
+  <button class="tab-btn active admin-only" id="tab-btn-inventory" onclick="switchTab('inventory',this)">📋 الجرد</button>
+  <button class="tab-btn admin-only" id="tab-btn-dispense" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button>
+  <button class="tab-btn admin-only" id="tab-btn-reports" onclick="switchTab('reports',this)">📊 التقارير</button>
+  <button class="tab-btn admin-only" id="tab-btn-monthly" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
+  <button class="tab-btn admin-only" id="tab-btn-catalog" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
   <div id="req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('pharmacy-req',this)">📝 طلب أدوية</button></div>
   <div id="wh-req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('wh-requests',this)">📦 الطلبات الواردة</button></div>
 </div>
@@ -2345,73 +2345,55 @@ function onLogout() {
 
 
 function applyUserPermissions() {
-  if(!currentUserData || currentUserData.role==='admin') return;
-  const p = currentUserData.permissions || {};
+  if(!currentUserData) return;
   const role = currentUserData.role;
+  const p = currentUserData.permissions || {};
 
-  // ── Hide restricted tabs from all non-admin users ──
-  // Only admin sees: جرد, حركة الصرف, التقارير, التقرير الشهري, قائمة الأدوية
-  const restrictedTabs = ['inventory','dispense','reports','monthly','catalog'];
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    const onclick = btn.getAttribute('onclick') || '';
-    restrictedTabs.forEach(tab => {
-      if(onclick.includes("'" + tab + "'")) {
-        btn.parentElement.style.display='none';
-        btn.style.display='none';
-      }
-    });
-  });
+  if(role === 'admin') {
+    // Admin: show ALL tabs
+    document.querySelectorAll('.admin-only').forEach(el => el.style.removeProperty('display'));
+    document.getElementById('dash-tab-btn').style.display = 'block';
+    // Switch to inventory
+    const invBtn = document.getElementById('tab-btn-inventory');
+    if(invBtn) invBtn.click();
+    return;
+  }
 
-  // Hide dashboard tab (already admin only)
+  // Non-admin: keep admin-only tabs hidden (CSS already hides them)
+  // Hide dashboard
   const dashBtn = document.getElementById('dash-tab-btn');
-  if(dashBtn) dashBtn.style.display='none';
+  if(dashBtn) dashBtn.style.display = 'none';
 
-  // Show pharmacy request tab for pharmacy roles
-  if(role==='pharmacy-in' || role==='pharmacy-out') {
-    const reqBtn = document.getElementById('req-tab-btn');
-    if(reqBtn) reqBtn.style.display='block';
-    // Switch to request tab
+  if(role === 'pharmacy-in' || role === 'pharmacy-out') {
+    // Show only: طلب أدوية
+    document.getElementById('req-tab-btn').style.display = 'block';
     setTimeout(()=>{
       const btn = document.querySelector('#req-tab-btn .tab-btn');
-      if(btn) btn.click();
-    }, 300);
+      if(btn) { btn.classList.add('active'); switchTab('pharmacy-req', btn); }
+    }, 500);
   }
 
-  // Show warehouse requests tab for warehouse
-  if(role==='warehouse') {
-    const whBtn = document.getElementById('wh-req-tab-btn');
-    if(whBtn) whBtn.style.display='block';
-    // Hide add/edit/delete in inventory if they get permission
-    setTimeout(()=>{
-      document.querySelectorAll('.btn-edit,.btn-del,.add-section,.camera-section').forEach(el=>el.style.display='none');
-    }, 500);
-    // Switch to warehouse requests
+  else if(role === 'warehouse') {
+    // Show only: الطلبات الواردة
+    document.getElementById('wh-req-tab-btn').style.display = 'block';
     setTimeout(()=>{
       const btn = document.querySelector('#wh-req-tab-btn .tab-btn');
-      if(btn) btn.click();
-    }, 300);
+      if(btn) { btn.classList.add('active'); switchTab('wh-requests', btn); }
+    }, 500);
   }
 
-  // Custodian - show only what admin gave permission for
-  if(role==='custodian') {
+  else if(role === 'custodian') {
+    // Show tabs based on permissions
     if(p.viewInv) {
-      // Show inventory tab but restricted
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        if(btn.getAttribute('onclick')?.includes("'inventory'")) {
-          btn.style.display='block';
-          btn.parentElement.style.display='';
-        }
-      });
+      const invBtn = document.getElementById('tab-btn-inventory');
+      if(invBtn) { invBtn.style.removeProperty('display'); invBtn.classList.add('active'); switchTab('inventory', invBtn); }
     }
-    if(!p.addDrug) {
-      setTimeout(()=>{ document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none'); }, 500);
-    }
-    if(!p.delDrug) {
-      setTimeout(()=>{ document.querySelectorAll('.btn-del').forEach(el=>el.style.display='none'); }, 500);
-    }
-    if(!p.editDrug) {
-      setTimeout(()=>{ document.querySelectorAll('.btn-edit').forEach(el=>el.style.display='none'); }, 500);
-    }
+    if(p.approve) document.getElementById('wh-req-tab-btn').style.display = 'block';
+    setTimeout(()=>{
+      if(!p.addDrug) document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none');
+      if(!p.delDrug) document.querySelectorAll('.btn-del').forEach(el=>el.style.display='none');
+      if(!p.editDrug) document.querySelectorAll('.btn-edit').forEach(el=>el.style.display='none');
+    }, 800);
   }
 }
 
