@@ -2517,11 +2517,17 @@ window.doLogin = async function() {
   const err = document.getElementById('auth-err');
   err.style.display='none';
   if(!fbAuth) {
-    err.textContent='⏳ جاري تحميل النظام، انتظر ثوانٍ...';
+    err.textContent='⏳ جاري تحميل النظام...';
     err.style.display='block';
-    setTimeout(()=>doLogin(), 1500);
+    err.style.background='#0099ff15';
+    err.style.color='var(--accent2)';
+    err.style.borderColor='#0099ff40';
+    setTimeout(()=>doLogin(), 800);
     return;
   }
+  err.style.background='';
+  err.style.color='';
+  err.style.borderColor='';
   const empId = document.getElementById('auth-empid').value.trim();
   const pass = document.getElementById('auth-pass').value;
   if(!empId||!pass) { err.textContent='أدخل الرقم الوظيفي وكلمة المرور'; err.style.display='block'; return; }
