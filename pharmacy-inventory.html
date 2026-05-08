@@ -183,15 +183,14 @@ td{padding:12px 14px;font-size:13px;}
   <div style="display:flex;align-items:center;gap:8px">
     <div id="date-display" style="font-size:11px;text-align:left;line-height:1.6"></div>
     <button id="theme-btn" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:16px">🌙</button>
-    <div id="auth-area">
-      <button onclick="showAuthModal()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;padding:6px 14px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:12px;cursor:pointer">👤 دخول</button>
-    </div>
+    <div id="auth-area"></div>
   </div>
 </header>
 <!-- Weather Bar -->
 <div id="weather-bar" style="background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 20px;display:flex;align-items:center;justify-content:space-between;font-size:12px;flex-wrap:wrap;gap:6px">
-  <div style="display:flex;gap:16px;align-items:center">
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
     <span>🌙 <span id="date-hijri" style="color:var(--accent);font-weight:600"></span></span>
+    <span style="color:var(--border)">|</span>
     <span>📅 <span id="date-miladi" style="color:var(--text-muted)"></span></span>
   </div>
   <div id="weather-info" style="display:flex;align-items:center;gap:6px;color:var(--text-muted)">
@@ -208,19 +207,26 @@ td{padding:12px 14px;font-size:13px;}
   </div>
 </div>
 
-<!-- Auth Modal -->
-<div id="auth-modal" style="display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:90%;max-width:400px">
-    <h3 style="font-size:16px;margin-bottom:18px;color:var(--accent2)" id="auth-title">تسجيل الدخول</h3>
-    <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:600">البريد الإلكتروني</label>
-      <input type="email" id="auth-email" placeholder="example@email.com" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
-    <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:600">كلمة المرور</label>
-      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="doLogin()" style="flex:1;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">دخول</button>
-      <button onclick="closeAuthModal()" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;padding:10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">إلغاء</button>
+<!-- Full Login Screen -->
+<div id="login-screen" style="position:fixed;inset:0;z-index:999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#e8f4fd 0%,#f0f8ff 50%,#e8f0fe 100%)">
+  <div style="background:#fff;border:1px solid #d1dce8;border-radius:24px;padding:44px 36px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,119,182,0.15);text-align:center">
+    <div style="width:72px;height:72px;background:linear-gradient(135deg,#0077b6,#0096c7);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(0,119,182,0.3)">
+      <svg width="38" height="38" viewBox="0 0 44 44" fill="none"><rect x="18" y="8" width="8" height="28" rx="2" fill="white"/><rect x="8" y="18" width="28" height="8" rx="2" fill="white"/></svg>
     </div>
-    <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--danger);margin-top:10px;display:none"></div>
+    <h1 style="font-size:22px;font-weight:900;color:#1a2332;margin-bottom:4px">عهدة <span style="color:#0077b6">الأدوية</span></h1>
+    <p style="font-size:12px;color:#64748b;margin-bottom:28px">نظام إدارة المخزون الدوائي</p>
+    <div style="margin-bottom:14px;text-align:right">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">الرقم الوظيفي</label>
+      <input type="text" id="auth-empid" placeholder="أدخل رقمك الوظيفي" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'">
+    </div>
+    <div style="margin-bottom:20px;text-align:right">
+      <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">كلمة المرور</label>
+      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,#0077b6,#0096c7);border:none;border-radius:12px;padding:13px;color:#fff;font-family:Cairo,sans-serif;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(0,119,182,0.3)">دخول</button>
+    <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-top:12px;display:none"></div>
+    <div style="margin-top:20px;font-size:11px;color:#64748b">© 2025 حسان العنزي — جميع الحقوق محفوظة</div>
   </div>
 </div>
 
@@ -229,7 +235,7 @@ td{padding:12px 14px;font-size:13px;}
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;width:90%;max-width:480px;max-height:90vh;overflow-y:auto">
     <h3 style="font-size:16px;margin-bottom:18px;color:var(--accent2)">➕ إضافة مستخدم</h3>
     <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الاسم</label><input type="text" id="um-name" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
-    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">البريد</label><input type="email" id="um-email" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الرقم الوظيفي</label><input type="text" id="um-empid" placeholder="مثال: 12345" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
     <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">كلمة المرور</label><input type="password" id="um-pass" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"></div>
     <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600">الدور</label>
       <select id="um-role" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
@@ -269,6 +275,8 @@ td{padding:12px 14px;font-size:13px;}
   <button class="tab-btn" onclick="switchTab('reports',this)">📊 التقارير</button>
   <button class="tab-btn" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
   <button class="tab-btn" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
+  <div id="req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('pharmacy-req',this)">📝 طلب أدوية</button></div>
+  <div id="wh-req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('wh-requests',this)">📦 الطلبات الواردة</button></div>
 </div>
 
 <div class="main">
@@ -746,7 +754,7 @@ function renderInventory(){
   tbody.innerHTML=list.map((d,i)=>{
     const days=getDaysLeft(d.exp);
     const st=getStatus(days);
-    const expF=new Date(d.exp).toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+    const expF=new Date(d.exp).toLocaleDateString('ar',{year:'numeric',month:'2-digit',day:'2-digit'});
     const stLabel=st.key==='ok'?'✓ سليمة':st.key==='warn'?`⚠ ${st.label}`:'✕ منتهية';
     const noteHtml=d.note?`<div class="drug-note">📝 ${d.note}</div>`:'';
     const catHtml=d.category==='narcotic'?'<span class="cat-narcotic">🔴 مخدر</span>':(d.category==='psycho'?'<span class="cat-psycho">🟣 نفسي</span>':'');
@@ -2241,7 +2249,10 @@ if(localStorage.getItem('inv-theme')==='dark') document.getElementById('theme-bt
 function updateDateTime() {
   const now = new Date();
   try { document.getElementById('date-hijri').textContent = now.toLocaleDateString('ar-SA-u-ca-islamic',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); } catch(e){}
-  document.getElementById('date-miladi').textContent = now.toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('date-miladi').textContent = now.toLocaleDateString('ar',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  // Also update old date-display if exists
+  const dd = document.getElementById('date-display');
+  if(dd) dd.textContent = now.toLocaleDateString('ar',{year:'numeric',month:'long',day:'numeric'});
 }
 updateDateTime();
 setInterval(updateDateTime, 60000);
@@ -2270,9 +2281,6 @@ loadWeather();
 setInterval(loadWeather, 300000);
 
 // ── FIREBASE AUTH & USERS ──
-window.showAuthModal = function() { document.getElementById('auth-modal').style.display='flex'; document.getElementById('auth-email').value=''; document.getElementById('auth-pass').value=''; document.getElementById('auth-err').style.display='none'; };
-window.closeAuthModal = function() { document.getElementById('auth-modal').style.display='none'; };
-
 // Firebase config
 const FB_CONFIG = {
   apiKey:"AIzaSyAAfw89A0uXaCnI23ltXBwaZzInldsrmJI",
@@ -2307,24 +2315,34 @@ initFirebase();
 
 function onLogin() {
   const isAdmin = currentUserData?.role === 'admin';
+  // Hide login screen
+  const ls = document.getElementById('login-screen');
+  if(ls) ls.style.display='none';
+  // Update auth area
+  const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 داخلية','pharmacy-out':'🏪 خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
   document.getElementById('auth-area').innerHTML = `
     <div style="display:flex;align-items:center;gap:8px">
-      <span style="font-size:12px;color:var(--accent);font-weight:700">${currentUserData?.name||''}</span>
-      ${isAdmin ? '<span style="font-size:10px;background:#7c3aed20;color:#a78bfa;padding:2px 8px;border-radius:20px;font-weight:700">أدمن</span>' : ''}
+      <span style="font-size:12px;color:var(--text);font-weight:700">${currentUserData?.name||''}</span>
+      <span style="font-size:10px;background:var(--surface2);color:var(--accent);padding:2px 8px;border-radius:20px;font-weight:700">${roleLabels[currentUserData?.role]||currentUserData?.role||''}</span>
       <button onclick="doLogout()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--text-muted);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">خروج</button>
     </div>`;
-  closeAuthModal();
   if(isAdmin) {
     document.getElementById('dash-tab-btn').style.display='block';
-    loadDashboard();
   }
   applyUserPermissions();
+  setupNotifListener();
+  if('Notification' in window) Notification.requestPermission();
 }
 
 function onLogout() {
-  document.getElementById('auth-area').innerHTML = '<button onclick="showAuthModal()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:8px;padding:6px 14px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:12px;cursor:pointer">👤 دخول</button>';
+  // Show login screen again
+  const ls = document.getElementById('login-screen');
+  if(ls) ls.style.display='flex';
+  document.getElementById('auth-area').innerHTML='';
   document.getElementById('dash-tab-btn').style.display='none';
 }
+
+
 
 function applyUserPermissions() {
   if(!currentUserData || currentUserData.role==='admin') return;
@@ -2335,13 +2353,25 @@ function applyUserPermissions() {
 }
 
 window.doLogin = async function() {
-  if(!fbAuth) { document.getElementById('auth-err').textContent='جاري التحميل...'; document.getElementById('auth-err').style.display='block'; return; }
-  const email = document.getElementById('auth-email').value.trim();
-  const pass = document.getElementById('auth-pass').value;
   const err = document.getElementById('auth-err');
   err.style.display='none';
-  try { await fbAuth.signInWithEmailAndPassword(email, pass); }
-  catch(e) { err.textContent='بريد أو كلمة مرور غير صحيحة'; err.style.display='block'; }
+  if(!fbAuth) {
+    err.textContent='⏳ جاري تحميل النظام، انتظر ثوانٍ...';
+    err.style.display='block';
+    setTimeout(()=>doLogin(), 1500);
+    return;
+  }
+  const empId = document.getElementById('auth-empid').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  if(!empId||!pass) { err.textContent='أدخل الرقم الوظيفي وكلمة المرور'; err.style.display='block'; return; }
+  // Convert employee ID to email format for Firebase
+  const email = empId + '@pharma.inv';
+  try {
+    await fbAuth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    err.textContent = 'رقم وظيفي أو كلمة مرور غير صحيحة';
+    err.style.display='block';
+  }
 };
 
 window.doLogout = async function() {
@@ -2350,13 +2380,14 @@ window.doLogout = async function() {
 
 window.addUser = async function() {
   const name=document.getElementById('um-name').value.trim();
-  const email=document.getElementById('um-email').value.trim();
+  const empId=document.getElementById('um-empid').value.trim();
   const pass=document.getElementById('um-pass').value;
   const role=document.getElementById('um-role').value;
   const dept=document.getElementById('um-dept').value.trim();
   const err=document.getElementById('um-err');
   err.style.display='none';
-  if(!name||!email||!pass){err.textContent='يرجى تعبئة كل الحقول';err.style.display='block';return;}
+  if(!name||!empId||!pass){err.textContent='يرجى تعبئة كل الحقول';err.style.display='block';return;}
+  const email = empId + '@pharma.inv'; // Convert to email for Firebase
   try {
     // Create secondary app to avoid logging out admin
     const sec = firebase.initializeApp(FB_CONFIG, 'secondary'+Date.now());
@@ -2376,7 +2407,7 @@ window.addUser = async function() {
       export:document.getElementById('p-export').checked,
       viewNarc:document.getElementById('p-narc').checked,
     };
-    await fbDb.collection('inv_users').doc(uid).set({name,email,role,dept,uid,permissions});
+    await fbDb.collection('inv_users').doc(uid).set({name,empId,email,role,dept,uid,permissions});
     showMsg('✅ تم إضافة المستخدم');
     document.getElementById('add-user-modal').style.display='none';
     loadUsers();
@@ -2392,7 +2423,7 @@ async function loadUsers() {
       const u=d.data(); const isSelf=u.uid===currentUser?.uid;
       return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
         <div><div style="font-weight:700;font-size:14px">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${u.email} ${u.dept?'• '+u.dept:''}</div></div>
+          <div style="font-size:12px;color:var(--text-muted)">رقم وظيفي: ${u.empId||''} ${u.dept?'• '+u.dept:''}</div></div>
         <div style="display:flex;gap:6px;align-items:center">
           <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#10b98118;color:var(--success)">${roleLabels[u.role]||u.role}</span>
           ${!isSelf?`<button onclick="deleteUser('${u.uid}','${u.name}')" style="background:none;border:1px solid #ef444430;border-radius:7px;padding:4px 10px;color:var(--danger);font-family:Cairo,sans-serif;font-size:11px;cursor:pointer">حذف</button>`:''}
@@ -2492,14 +2523,325 @@ window.exportDashMonthly = function() {
   showMsg('✅ تم التصدير');
 };
 
-// Update switchTab to handle dashboard
+
+// ═══ PHARMACY REQUEST SYSTEM ═══
+let requestItems = []; // list of drugs to request
+let whFilter = 'all';
+
+window.addToRequestList = function() {
+  const drug = document.getElementById('preq-drug').value.trim();
+  const qty = +document.getElementById('preq-qty').value;
+  if(!drug) { showMsg('⚠️ أدخل اسم الدواء'); return; }
+  if(!qty||qty<=0) { showMsg('⚠️ أدخل الكمية'); return; }
+  requestItems.push({drug, qty, id: Date.now()});
+  document.getElementById('preq-drug').value='';
+  document.getElementById('preq-qty').value='';
+  document.getElementById('preq-drug').focus();
+  renderRequestList();
+};
+
+function renderRequestList() {
+  const wrap = document.getElementById('req-items-list');
+  if(!requestItems.length) { wrap.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:10px;text-align:center">لم تضف أي أدوية بعد</div>'; return; }
+  wrap.innerHTML = requestItems.map((item,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2);border-radius:10px;margin-bottom:6px">
+      <div style="font-weight:600;font-size:13px">${item.drug}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${item.qty}</span>
+        <button onclick="removeReqItem(${item.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+window.removeReqItem = function(id) {
+  requestItems = requestItems.filter(i=>i.id!==id);
+  renderRequestList();
+};
+
+window.clearRequestList = function() {
+  requestItems = [];
+  renderRequestList();
+  document.getElementById('preq-note').value='';
+};
+
+window.submitPharmacyRequest = async function() {
+  if(!currentUser||!fbDb) { showMsg('⚠️ سجّل دخول أولاً'); return; }
+  if(!requestItems.length) { showMsg('⚠️ أضف أدوية للقائمة أولاً'); return; }
+  const note = document.getElementById('preq-note').value.trim();
+  await fbDb.collection('pharm_requests').add({
+    items: requestItems,
+    note,
+    status: 'pending',
+    fromUid: currentUser.uid,
+    fromName: currentUserData.name,
+    fromRole: currentUserData.role,
+    fromDept: currentUserData.dept||'',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  // Notify warehouse users
+  const wSnap = await fbDb.collection('inv_users').where('role','==','warehouse').get();
+  for(const u of wSnap.docs) {
+    await fbDb.collection('inv_notifs').add({
+      toUid: u.data().uid,
+      message: `📝 طلب جديد من ${currentUserData.name||currentUserData.dept||''} — ${requestItems.length} صنف`,
+      read: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  // Also notify admin
+  const aSnap = await fbDb.collection('inv_users').where('role','==','admin').get();
+  for(const u of aSnap.docs) {
+    await fbDb.collection('inv_notifs').add({
+      toUid: u.data().uid,
+      message: `📝 طلب جديد من ${currentUserData.name||''} — ${requestItems.length} صنف`,
+      read: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  playReqSound();
+  showMsg('✅ تم إرسال الطلب للمستودع');
+  clearRequestList();
+  loadMyRequests();
+};
+
+function playReqSound() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.2].forEach(t=>{
+      const o=ctx.createOscillator(); const g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=520; o.type='sine';
+      g.gain.setValueAtTime(0.2,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.2);
+      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.2);
+    });
+  } catch(e){}
+}
+
+async function loadMyRequests() {
+  if(!fbDb||!currentUser) return;
+  const snap = await fbDb.collection('pharm_requests').where('fromUid','==',currentUser.uid).orderBy('createdAt','desc').get();
+  const wrap = document.getElementById('my-pharm-requests');
+  if(snap.empty) { wrap.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>لا توجد طلبات</p></div>'; return; }
+  const stLabels={pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 تم التسليم'};
+  const stColors={pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+  wrap.innerHTML = snap.docs.map(d=>{
+    const r=d.data();
+    const dt=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleString('ar-SA'):'';
+    return `<div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-weight:700;font-size:13px">طلب — ${r.items?.length||0} صنف</div>
+          <div style="font-size:11px;color:var(--text-muted)">${dt}</div>
+          ${r.note?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📝 ${r.note}</div>`:''}
+          ${r.warehouseNote?`<div style="font-size:12px;color:var(--warn);margin-top:4px;padding:4px 8px;background:#f59e0b10;border-radius:6px">🏭 ${r.warehouseNote}</div>`:''}
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${stColors[r.status]||'var(--warn)'}18;color:${stColors[r.status]||'var(--warn)'}">${stLabels[r.status]||r.status}</span>
+      </div>
+      <div>${(r.items||[]).map(i=>`<span style="font-size:11px;background:var(--surface2);padding:2px 8px;border-radius:20px;margin-left:4px">${i.drug} (${i.qty})</span>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══ WAREHOUSE REQUESTS ═══
+window.setWhFilter = function(f,btn) {
+  whFilter=f;
+  document.querySelectorAll('#tab-wh-requests .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadWarehouseRequests();
+};
+
+async function loadWarehouseRequests() {
+  if(!fbDb) return;
+  let query = fbDb.collection('pharm_requests').orderBy('createdAt','desc');
+  if(whFilter!=='all') query = query.where('status','==',whFilter);
+  const snap = await query.get();
+  const wrap = document.getElementById('wh-requests-list');
+  if(snap.empty) { wrap.innerHTML='<div class="empty-state"><div class="icon">📦</div><p>لا توجد طلبات</p></div>'; return; }
+  const stLabels={pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 تم التسليم'};
+  const stColors={pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+  wrap.innerHTML = snap.docs.map(d=>{
+    const r=d.data(); const id=d.id;
+    const dt=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleString('ar-SA'):'';
+    const actions = r.status==='pending' ? `
+      <div style="margin-top:10px">
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">تعديل الكميات قبل الموافقة:</div>
+        <div id="wh-items-${id}">${(r.items||[]).map((item,i)=>`
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="flex:1;font-size:13px;font-weight:600">${item.drug}</span>
+            <span style="font-size:11px;color:var(--text-muted)">طُلب:</span>
+            <input type="number" value="${item.qty}" min="0" data-idx="${i}" data-id="${id}"
+              style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;outline:none;"
+              id="wh-qty-${id}-${i}">
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:8px"><label style="display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px">ملاحظة للصيدلية:</label>
+          <input type="text" id="wh-note-${id}" placeholder="اختياري..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;outline:none;margin-bottom:8px">
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="approveRequest('${id}','${r.fromUid}')" style="background:#10b98120;border:1px solid #10b98140;border-radius:8px;padding:6px 14px;color:var(--success);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">✅ موافقة</button>
+          <button onclick="rejectRequest('${id}','${r.fromUid}')" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:6px 14px;color:var(--danger);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">❌ رفض</button>
+        </div>
+      </div>` : r.status==='approved' ? `
+      <div style="margin-top:8px">
+        <button onclick="markDelivered('${id}','${r.fromUid}')" style="background:#f59e0b20;border:1px solid #f59e0b40;border-radius:8px;padding:6px 14px;color:var(--warn);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">📦 تم التسليم</button>
+      </div>` : '';
+    return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div style="font-weight:700;font-size:14px">من: ${r.fromName||r.fromDept||''}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${dt} | ${r.items?.length||0} صنف</div>
+          ${r.note?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📝 ${r.note}</div>`:''}
+          ${r.warehouseNote?`<div style="font-size:12px;color:var(--warn);margin-top:4px">🏭 ملاحظتك: ${r.warehouseNote}</div>`:''}
+        </div>
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:${stColors[r.status]||'var(--warn)'}18;color:${stColors[r.status]||'var(--warn)'}">${stLabels[r.status]||r.status}</span>
+      </div>
+      <div style="margin-bottom:8px">${(r.items||[]).map(i=>`<span style="font-size:11px;background:var(--surface);padding:2px 8px;border-radius:20px;margin-left:4px">${i.drug} (${i.qty})</span>`).join('')}</div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+window.approveRequest = async function(id, fromUid) {
+  const note = document.getElementById('wh-note-'+id)?.value.trim()||'';
+  const snap = await fbDb.collection('pharm_requests').doc(id).get();
+  const r = snap.data();
+  // Get updated quantities
+  const updatedItems = (r.items||[]).map((item,i)=>{
+    const newQty = +document.getElementById(`wh-qty-${id}-${i}`)?.value || item.qty;
+    return {...item, qty:newQty};
+  });
+  // Deduct from inventory
+  const drugsLocal = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  updatedItems.forEach(item=>{
+    const d = drugsLocal.find(x=>(x.name||x.nameAr||'').toLowerCase().includes(item.drug.toLowerCase()));
+    if(d) d.qty = Math.max(0, (d.qty||0)-item.qty);
+  });
+  localStorage.setItem('pharma-drugs', JSON.stringify(drugsLocal));
+  renderInventory();
+  await fbDb.collection('pharm_requests').doc(id).update({status:'approved',items:updatedItems,warehouseNote:note,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`✅ تمت الموافقة على طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  showMsg('✅ تمت الموافقة');
+  loadWarehouseRequests();
+};
+
+window.rejectRequest = async function(id, fromUid) {
+  const note = document.getElementById('wh-note-'+id)?.value.trim()||'';
+  await fbDb.collection('pharm_requests').doc(id).update({status:'rejected',warehouseNote:note,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`❌ تم رفض طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  showMsg('تم الرفض');
+  loadWarehouseRequests();
+};
+
+window.markDelivered = async function(id, fromUid) {
+  await fbDb.collection('pharm_requests').doc(id).update({status:'delivered',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`📦 تم تسليم طلبك من المستودع`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  showMsg('📦 تم التسليم');
+  loadWarehouseRequests();
+};
+
+// ═══ PERMISSIONS & TABS PER ROLE ═══
+function applyUserPermissions() {
+  if(!currentUserData || currentUserData.role==='admin') return;
+  const p = currentUserData.permissions || {};
+  const role = currentUserData.role;
+
+  // Show/hide tabs based on role
+  if(role==='pharmacy-in'||role==='pharmacy-out') {
+    document.getElementById('req-tab-btn').style.display='block';
+    loadMyRequests();
+  }
+  if(role==='warehouse') {
+    document.getElementById('wh-req-tab-btn').style.display='block';
+    loadWarehouseRequests();
+  }
+
+  // Inventory tab permissions
+  const addSec = document.querySelector('.add-section');
+  if(addSec && !p.addDrug && role!=='custodian') addSec.style.display='none';
+  if(role==='warehouse') {
+    // Warehouse: read-only inventory, hide action buttons
+    setTimeout(()=>{
+      document.querySelectorAll('.btn-edit,.btn-del').forEach(b=>b.style.display='none');
+      document.querySelectorAll('.add-section').forEach(s=>s.style.display='none');
+    }, 1000);
+  }
+}
+
+// Setup real-time notifications listener
+function setupNotifListener() {
+  if(!fbDb||!currentUser) return;
+  fbDb.collection('inv_notifs').where('toUid','==',currentUser.uid).where('read','==',false)
+    .onSnapshot(snap=>{
+      snap.docChanges().forEach(change=>{
+        if(change.type==='added') {
+          const d=change.doc.data();
+          playReqSound();
+          if(Notification.permission==='granted') new Notification('عهدة الأدوية 💊',{body:d.message});
+          showMsg(d.message);
+        }
+      });
+    });
+}
+
+// ═══ COPYRIGHT ═══
+// © 2025 حسان العنزي - جميع الحقوق محفوظة
+// Developed for pharmacy inventory management
+
+
+// Update switchTab to handle all new tabs
 const _origSwitchTab = switchTab;
 window.switchTab = function(name, btn) {
   _origSwitchTab(name, btn);
   if(name==='dashboard') loadDashboard();
+  if(name==='wh-requests') loadWarehouseRequests();
+  if(name==='pharmacy-req') loadMyRequests();
 };
 
 </script>
+<!-- TAB: PHARMACY REQUEST -->
+<div class="tab-content" id="tab-pharmacy-req">
+  <div class="add-section">
+    <div class="section-title">📝 طلب أدوية من المستودع</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="flex:2;min-width:180px"><label>اسم الدواء</label>
+        <input type="text" id="preq-drug" placeholder="اكتب اسم الدواء..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+      </div>
+      <div class="field" style="flex:1;min-width:80px"><label>الكمية</label>
+        <input type="number" id="preq-qty" min="1" placeholder="0" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+      </div>
+      <button onclick="addToRequestList()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;color:var(--accent);font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">➕ أضف للقائمة</button>
+    </div>
+    <div id="req-list-wrap" style="margin-bottom:14px">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;font-weight:600">قائمة الطلب:</div>
+      <div id="req-items-list"><div style="font-size:13px;color:var(--text-muted);padding:10px;text-align:center">لم تضف أي أدوية بعد</div></div>
+    </div>
+    <div class="field" style="margin-bottom:12px"><label>ملاحظة لموظف المستودع</label>
+      <textarea id="preq-note" placeholder="أي تفاصيل إضافية..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:vertical;min-height:70px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="submitPharmacyRequest()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px 24px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">📤 إرسال الطلب للمستودع</button>
+      <button onclick="clearRequestList()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--danger);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">🗑️ مسح القائمة</button>
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-top:16px">
+    <div style="padding:12px 16px;font-weight:700;font-size:13px;color:var(--accent);border-bottom:1px solid var(--border)">📋 طلباتي السابقة</div>
+    <div id="my-pharm-requests"><div class="empty-state"><div class="icon">📋</div><p>لا توجد طلبات</p></div></div>
+  </div>
+</div>
+
+<!-- TAB: WAREHOUSE REQUESTS -->
+<div class="tab-content" id="tab-wh-requests">
+  <div class="controls" style="margin-bottom:14px">
+    <button class="filter-btn active" onclick="setWhFilter('all',this)">الكل</button>
+    <button class="filter-btn" onclick="setWhFilter('pending',this)">⏳ معلقة</button>
+    <button class="filter-btn" onclick="setWhFilter('approved',this)">✅ موافق عليها</button>
+    <button class="filter-btn" onclick="setWhFilter('rejected',this)">❌ مرفوضة</button>
+  </div>
+  <div id="wh-requests-list"><div class="empty-state"><div class="icon">📦</div><p>لا توجد طلبات</p></div></div>
+</div>
+
 <div class="toast" id="toast" style="opacity:0"></div>
+<div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);margin-top:20px">
+  © 2025 حسان العنزي — جميع الحقوق محفوظة | نظام عهدة الأدوية
+</div>
 </body>
 </html>
