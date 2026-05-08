@@ -2355,7 +2355,10 @@ function buildTabsForRole() {
     ],
     'pharmacy-in':  [{id:'pharmacy-req', label:'📝 طلب أدوية',        fn:'loadMyPharmRequests()'}],
     'pharmacy-out': [{id:'pharmacy-req', label:'📝 طلب أدوية',        fn:'loadMyPharmRequests()'}],
-    warehouse:      [{id:'wh-requests',  label:'📦 الطلبات الواردة',  fn:'loadWarehouseRequests()'}],
+    warehouse: [
+      {id:'wh-requests', label:'📦 الطلبات الواردة', fn:'loadWarehouseRequests()'},
+      {id:'inventory',   label:'💊 أدوية المستودع',  fn:'loadWhInventory()'},
+    ],
     custodian:      [],
   };
 
@@ -3077,6 +3080,56 @@ window.userImportExcel = function(e) {
 };
 
 
+
+// ═══ WAREHOUSE INVENTORY VIEW (read-only) ═══
+window.loadWhInventory = function() {
+  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+  const wrap = document.getElementById('tab-inventory');
+  if(!wrap) return;
+
+  // Hide add/edit/delete sections
+  setTimeout(()=>{
+    document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none');
+    document.querySelectorAll('.btn-edit,.btn-del,.btn-cam,.btn-cam-stop').forEach(el=>el.style.display='none');
+    // Hide filter buttons that allow adding
+    const filterBtns = document.querySelectorAll('.filter-bar button');
+    filterBtns.forEach(b=>{ if(b.textContent.includes('إضافة')) b.style.display='none'; });
+  }, 200);
+
+  if(!drugs.length) {
+    document.getElementById('inv-list').innerHTML='';
+    document.getElementById('inv-empty').style.display='block';
+    return;
+  }
+
+  // Sort by expiry
+  const sorted = [...drugs].sort((a,b)=>{
+    const da = a.exp ? new Date(a.exp) : new Date('9999');
+    const db2 = b.exp ? new Date(b.exp) : new Date('9999');
+    return da - db2;
+  });
+
+  document.getElementById('inv-empty').style.display='none';
+  const tbody = document.getElementById('inv-list');
+  tbody.innerHTML = sorted.map((d,i)=>{
+    const days = d.exp ? Math.floor((new Date(d.exp)-new Date())/86400000) : 999;
+    const expF = d.exp ? new Date(d.exp).toLocaleDateString('ar',{year:'numeric',month:'2-digit',day:'2-digit'}) : '—';
+    const st = days < 0 ? {c:'#ef444440',t:'var(--danger)',l:'✕ منتهية'} 
+             : days <= 90 ? {c:'#f59e0b40',t:'var(--warn)',l:`⚠ ${days} يوم`}
+             : {c:'#10b98140',t:'var(--success)',l:'✓ سليمة'};
+    const cat = d.cat==='narcotic' ? '<span style="font-size:10px;background:#ef444418;color:#ff6b6b;padding:2px 7px;border-radius:20px;font-weight:700">🔴 مخدر</span>'
+              : d.cat==='psycho'   ? '<span style="font-size:10px;background:#7c3aed18;color:#a78bfa;padding:2px 7px;border-radius:20px;font-weight:700">🟣 نفسي</span>' : '';
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
+      <td><div style="font-weight:700">${d.nameAr||d.name||''} ${cat}</div><div style="font-size:10px;color:var(--text-muted)">${d.type||''}</div></td>
+      <td><span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${d.qty||0}</span></td>
+      <td style="font-size:12px">${expF}</td>
+      <td><span style="background:${st.c};color:${st.t};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${st.l}</span></td>
+    </tr>`;
+  }).join('');
+};
+
+
 // ═══ COPYRIGHT ═══
 // © 2026 PharmaTec - جميع الحقوق محفوظة
 // Developed for pharmacy inventory management
@@ -3089,6 +3142,7 @@ window.switchTab = function(name, btn) {
   if(name==='dashboard') loadDashboard();
   if(name==='wh-requests') loadWarehouseRequests();
   if(name==='pharmacy-req') loadMyPharmRequests();
+  if(name==='inventory' && currentUserData?.role==='warehouse') setTimeout(loadWhInventory, 100);
 };
 
 </script>
