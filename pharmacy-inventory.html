@@ -2544,21 +2544,64 @@ async function loadDashboard() {
   const dispLocal = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
   document.getElementById('d-total').textContent = drugsLocal.length;
   document.getElementById('d-units').textContent = drugsLocal.reduce((s,d)=>s+(d.qty||0),0);
-  document.getElementById('d-pending').textContent = dispLocal.filter(d=>d.type==='out').length;
-  document.getElementById('d-expired').textContent = drugsLocal.filter(d=>{ const days=getDaysLeft(d.exp||''); return days<0; }).length;
-  // Recent activity
-  const recent = [...dispLocal].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
-  document.getElementById('dash-activity').innerHTML = recent.length ? recent.map(e=>{
-    const dt = new Date(e.date).toLocaleString('ar-SA');
-    const drug = drugsLocal.find(d=>String(d.id)===String(e.drugId));
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-      <div><div style="font-weight:600;font-size:13px">${e.drugName||drug?.name||''}</div>
-        <div style="font-size:11px;color:var(--text-muted)">${dt} ${e.dest?'• '+e.dest:''}</div></div>
-      <span style="font-weight:900;font-size:15px;color:${e.type==='out'?'var(--danger)':'var(--success)'}">${e.type==='out'?'−':'+'}${e.qty}</span>
-    </div>`;
-  }).join('') : '<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات</p></div>';
+  document.getElementById('d-expired').textContent = drugsLocal.filter(d=>getDaysLeft(d.exp||'')<0).length;
+
+  // Get pharmacy requests from Firebase for pending count
+  const reqSnap = await fbDb.collection('pharm_requests').get();
+  const allReqs = reqSnap.docs.map(d=>({id:d.id,...d.data()}));
+  document.getElementById('d-pending').textContent = allReqs.filter(r=>r.status==='pending').length;
+
+  // ── ACTIVITY LOG: merge local dispenses + Firebase requests ──
+  const actWrap = document.getElementById('dash-activity');
+  actWrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px">⏳ جاري التحميل...</div>';
+
+  // Local dispenses
+  const localActs = dispLocal.map(e=>({
+    time: new Date(e.date||0).getTime(),
+    type: 'dispense',
+    label: `${e.type==='out'?'📤 صرف':'📥 استلام'} — ${e.drugName||''} (${e.qty||0})`,
+    user: e.by || 'غير محدد',
+    dest: e.dest || '',
+    color: e.type==='out' ? 'var(--danger)' : 'var(--success)',
+    status: ''
+  }));
+
+  // Firebase pharmacy requests
+  const reqActs = allReqs.map(r=>({
+    time: r.createdAt?.seconds ? r.createdAt.seconds*1000 : 0,
+    type: 'request',
+    label: `📝 طلب أدوية — ${r.items?.length||0} صنف`,
+    user: r.fromName || r.fromDept || 'غير محدد',
+    dest: r.warehouseNote ? `رد المستودع: ${r.warehouseNote}` : '',
+    color: r.status==='pending'?'var(--warn)':r.status==='approved'?'var(--success)':r.status==='rejected'?'var(--danger)':'var(--accent2)',
+    status: r.status==='pending'?'⏳ معلق':r.status==='approved'?'✅ موافق':r.status==='rejected'?'❌ مرفوض':'📦 مُسلَّم',
+    approvedBy: r.updatedBy || ''
+  }));
+
+  // Merge and sort by time
+  const allActs = [...localActs, ...reqActs].sort((a,b)=>b.time-a.time).slice(0,20);
+
+  if(!allActs.length) {
+    actWrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات</p></div>';
+  } else {
+    actWrap.innerHTML = allActs.map(a=>{
+      const dt = a.time ? new Date(a.time).toLocaleString('ar-SA') : '';
+      return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:10px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px;color:var(--text)">${a.label}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--accent)">👤 ${a.user}</span>
+            ${a.approvedBy?`<span style="font-size:11px;color:var(--text-muted)">• قبل بواسطة: ${a.approvedBy}</span>`:''}
+            <span style="font-size:11px;color:var(--text-muted)">${dt}</span>
+            ${a.dest?`<span style="font-size:11px;color:var(--text-muted)">• ${a.dest}</span>`:''}
+          </div>
+        </div>
+        ${a.status?`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;background:${a.color}18;color:${a.color}">${a.status}</span>`:''}
+      </div>`;
+    }).join('');
+  }
+
   loadUsers();
-  // Set current month
   const now = new Date();
   document.getElementById('dash-month').value = now.toISOString().slice(0,7);
 }
@@ -3081,47 +3124,88 @@ window.userImportExcel = function(e) {
 
 
 
-// ═══ WAREHOUSE INVENTORY VIEW (read-only) ═══
+// ═══ WAREHOUSE INVENTORY VIEW (read-only + search) ═══
 window.loadWhInventory = function() {
-  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
   const wrap = document.getElementById('tab-inventory');
   if(!wrap) return;
 
   // Hide add/edit/delete sections
   setTimeout(()=>{
-    document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none');
-    document.querySelectorAll('.btn-edit,.btn-del,.btn-cam,.btn-cam-stop').forEach(el=>el.style.display='none');
-    // Hide filter buttons that allow adding
-    const filterBtns = document.querySelectorAll('.filter-bar button');
-    filterBtns.forEach(b=>{ if(b.textContent.includes('إضافة')) b.style.display='none'; });
-  }, 200);
+    document.querySelectorAll('.add-section,.camera-section,.cam-section').forEach(el=>el.style.display='none');
+    document.querySelectorAll('.btn-edit,.btn-del').forEach(el=>el.style.display='none');
+  }, 300);
 
-  if(!drugs.length) {
-    document.getElementById('inv-list').innerHTML='';
-    document.getElementById('inv-empty').style.display='block';
-    return;
+  // Inject search bar if not there
+  if(!document.getElementById('wh-search-wrap')) {
+    const searchWrap = document.createElement('div');
+    searchWrap.id = 'wh-search-wrap';
+    searchWrap.style.cssText = 'padding:14px 0;display:flex;gap:8px;flex-wrap:wrap';
+    searchWrap.innerHTML = `
+      <input id="wh-inv-search" type="text" placeholder="🔍 ابحث بالاسم العلمي أو العربي..."
+        style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"
+        oninput="renderWhInventory()">
+      <select id="wh-inv-filter" onchange="renderWhInventory()"
+        style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+        <option value="all">كل الأدوية</option>
+        <option value="ok">✅ سليمة</option>
+        <option value="warn">⚠️ تنتهي قريباً</option>
+        <option value="expired">❌ منتهية</option>
+        <option value="narcotic">🔴 مخدرة</option>
+        <option value="psycho">🟣 نفسية</option>
+      </select>`;
+    const tableWrap = wrap.querySelector('.table-wrap');
+    if(tableWrap) wrap.insertBefore(searchWrap, tableWrap);
   }
+  renderWhInventory();
+};
 
-  // Sort by expiry
-  const sorted = [...drugs].sort((a,b)=>{
+window.renderWhInventory = function() {
+  const q = (document.getElementById('wh-inv-search')?.value||'').trim().toLowerCase();
+  const filter = document.getElementById('wh-inv-filter')?.value || 'all';
+  const drugs = JSON.parse(localStorage.getItem('pharma-drugs')||'[]');
+
+  let list = drugs.filter(d=>{
+    const name = (d.name||d.nameAr||'').toLowerCase();
+    const nameAr = (d.nameAr||d.name||'').toLowerCase();
+    const matchQ = !q || name.includes(q) || nameAr.includes(q);
+    if(!matchQ) return false;
+    const days = d.exp ? Math.floor((new Date(d.exp)-new Date())/86400000) : 999;
+    if(filter==='ok') return days >= 90;
+    if(filter==='warn') return days >= 0 && days < 90;
+    if(filter==='expired') return days < 0;
+    if(filter==='narcotic') return d.cat==='narcotic';
+    if(filter==='psycho') return d.cat==='psycho';
+    return true;
+  }).sort((a,b)=>{
     const da = a.exp ? new Date(a.exp) : new Date('9999');
     const db2 = b.exp ? new Date(b.exp) : new Date('9999');
     return da - db2;
   });
 
-  document.getElementById('inv-empty').style.display='none';
   const tbody = document.getElementById('inv-list');
-  tbody.innerHTML = sorted.map((d,i)=>{
+  const empty = document.getElementById('inv-empty');
+
+  if(!list.length) { tbody.innerHTML=''; empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  tbody.innerHTML = list.map((d,i)=>{
     const days = d.exp ? Math.floor((new Date(d.exp)-new Date())/86400000) : 999;
     const expF = d.exp ? new Date(d.exp).toLocaleDateString('ar',{year:'numeric',month:'2-digit',day:'2-digit'}) : '—';
-    const st = days < 0 ? {c:'#ef444440',t:'var(--danger)',l:'✕ منتهية'} 
+    const st = days < 0 ? {c:'#ef444440',t:'var(--danger)',l:'✕ منتهية'}
              : days <= 90 ? {c:'#f59e0b40',t:'var(--warn)',l:`⚠ ${days} يوم`}
              : {c:'#10b98140',t:'var(--success)',l:'✓ سليمة'};
-    const cat = d.cat==='narcotic' ? '<span style="font-size:10px;background:#ef444418;color:#ff6b6b;padding:2px 7px;border-radius:20px;font-weight:700">🔴 مخدر</span>'
-              : d.cat==='psycho'   ? '<span style="font-size:10px;background:#7c3aed18;color:#a78bfa;padding:2px 7px;border-radius:20px;font-weight:700">🟣 نفسي</span>' : '';
+    const cat = d.cat==='narcotic' ? '<span style="font-size:10px;background:#ef444418;color:#ff6b6b;padding:2px 7px;border-radius:20px;font-weight:700">🔴</span>'
+              : d.cat==='psycho'   ? '<span style="font-size:10px;background:#7c3aed18;color:#a78bfa;padding:2px 7px;border-radius:20px;font-weight:700">🟣</span>' : '';
+    // Show scientific name (English) as primary, Arabic as subtitle
+    const sciName = d.name || d.nameAr || '';
+    const arName = d.nameAr || d.name || '';
+    const displayName = sciName === arName ? sciName : sciName;
     return `<tr>
       <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
-      <td><div style="font-weight:700">${d.nameAr||d.name||''} ${cat}</div><div style="font-size:10px;color:var(--text-muted)">${d.type||''}</div></td>
+      <td>
+        <div style="font-weight:700;font-size:13px">${displayName} ${cat}</div>
+        <div style="font-size:11px;color:var(--text-muted)">${arName !== sciName ? arName+' • ' : ''}${d.type||''}</div>
+      </td>
       <td><span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${d.qty||0}</span></td>
       <td style="font-size:12px">${expF}</td>
       <td><span style="background:${st.c};color:${st.t};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${st.l}</span></td>
