@@ -2347,9 +2347,72 @@ function onLogout() {
 function applyUserPermissions() {
   if(!currentUserData || currentUserData.role==='admin') return;
   const p = currentUserData.permissions || {};
-  // Hide add section if no addDrug perm
-  const addSec = document.querySelector('.add-section');
-  if(addSec && !p.addDrug) addSec.style.display='none';
+  const role = currentUserData.role;
+
+  // ── Hide restricted tabs from all non-admin users ──
+  // Only admin sees: جرد, حركة الصرف, التقارير, التقرير الشهري, قائمة الأدوية
+  const restrictedTabs = ['inventory','dispense','reports','monthly','catalog'];
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    restrictedTabs.forEach(tab => {
+      if(onclick.includes("'" + tab + "'")) {
+        btn.parentElement.style.display='none';
+        btn.style.display='none';
+      }
+    });
+  });
+
+  // Hide dashboard tab (already admin only)
+  const dashBtn = document.getElementById('dash-tab-btn');
+  if(dashBtn) dashBtn.style.display='none';
+
+  // Show pharmacy request tab for pharmacy roles
+  if(role==='pharmacy-in' || role==='pharmacy-out') {
+    const reqBtn = document.getElementById('req-tab-btn');
+    if(reqBtn) reqBtn.style.display='block';
+    // Switch to request tab
+    setTimeout(()=>{
+      const btn = document.querySelector('#req-tab-btn .tab-btn');
+      if(btn) btn.click();
+    }, 300);
+  }
+
+  // Show warehouse requests tab for warehouse
+  if(role==='warehouse') {
+    const whBtn = document.getElementById('wh-req-tab-btn');
+    if(whBtn) whBtn.style.display='block';
+    // Hide add/edit/delete in inventory if they get permission
+    setTimeout(()=>{
+      document.querySelectorAll('.btn-edit,.btn-del,.add-section,.camera-section').forEach(el=>el.style.display='none');
+    }, 500);
+    // Switch to warehouse requests
+    setTimeout(()=>{
+      const btn = document.querySelector('#wh-req-tab-btn .tab-btn');
+      if(btn) btn.click();
+    }, 300);
+  }
+
+  // Custodian - show only what admin gave permission for
+  if(role==='custodian') {
+    if(p.viewInv) {
+      // Show inventory tab but restricted
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if(btn.getAttribute('onclick')?.includes("'inventory'")) {
+          btn.style.display='block';
+          btn.parentElement.style.display='';
+        }
+      });
+    }
+    if(!p.addDrug) {
+      setTimeout(()=>{ document.querySelectorAll('.add-section,.camera-section').forEach(el=>el.style.display='none'); }, 500);
+    }
+    if(!p.delDrug) {
+      setTimeout(()=>{ document.querySelectorAll('.btn-del').forEach(el=>el.style.display='none'); }, 500);
+    }
+    if(!p.editDrug) {
+      setTimeout(()=>{ document.querySelectorAll('.btn-edit').forEach(el=>el.style.display='none'); }, 500);
+    }
+  }
 }
 
 window.doLogin = async function() {
@@ -2782,6 +2845,40 @@ function setupNotifListener() {
     });
 }
 
+// ═══ DRUG SEARCH FOR REQUEST ═══
+window.onReqDrugSearch = function() {
+  const q = document.getElementById('preq-drug').value.trim().toLowerCase();
+  const sug = document.getElementById('req-drug-sug');
+  if(q.length < 2) { sug.style.display='none'; return; }
+  
+  // Search in DRUG_DB
+  const matches = DRUG_DB.filter(d =>
+    d.ar.includes(q) || d.name.toLowerCase().includes(q) || d.conc.toLowerCase().includes(q)
+  ).slice(0, 8);
+  
+  if(!matches.length) { sug.style.display='none'; return; }
+  
+  sug.innerHTML = matches.map(d => `
+    <div onclick="selectReqDrug('${d.ar} ${d.conc}')" 
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:700;font-size:13px">${d.ar} <span style="color:var(--accent);font-size:12px">${d.conc}</span></div>
+      <div style="font-size:11px;color:var(--text-muted)">${d.name} — ${d.form} ${d.cat==='narcotic'?'🔴':d.cat==='psycho'?'🟣':''}</div>
+    </div>`).join('');
+  sug.style.display = 'block';
+};
+
+window.selectReqDrug = function(name) {
+  document.getElementById('preq-drug').value = name;
+  document.getElementById('req-drug-sug').style.display = 'none';
+  document.getElementById('preq-qty').focus();
+};
+
+document.addEventListener('click', e => {
+  if(!e.target.closest('#preq-drug') && !e.target.closest('#req-drug-sug'))
+    { const s=document.getElementById('req-drug-sug'); if(s) s.style.display='none'; }
+});
+
 // ═══ COPYRIGHT ═══
 // © 2025 حسان العنزي - جميع الحقوق محفوظة
 // Developed for pharmacy inventory management
@@ -2803,7 +2900,13 @@ window.switchTab = function(name, btn) {
     <div class="section-title">📝 طلب أدوية من المستودع</div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
       <div class="field" style="flex:2;min-width:180px"><label>اسم الدواء</label>
-        <input type="text" id="preq-drug" placeholder="اكتب اسم الدواء..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+        <div style="position:relative">
+          <input type="text" id="preq-drug" placeholder="اكتب اسم الدواء للبحث..." 
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"
+            oninput="onReqDrugSearch()" autocomplete="off"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();addToRequestList();}">
+          <div id="req-drug-sug" style="position:absolute;top:100%;right:0;left:0;background:var(--surface);border:1px solid var(--accent);border-radius:10px;z-index:100;max-height:200px;overflow-y:auto;display:none;margin-top:4px;box-shadow:0 8px 20px rgba(0,0,0,0.15)"></div>
+        </div>
       </div>
       <div class="field" style="flex:1;min-width:80px"><label>الكمية</label>
         <input type="number" id="preq-qty" min="1" placeholder="0" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
