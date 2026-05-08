@@ -169,10 +169,7 @@ td{padding:12px 14px;font-size:13px;}
   th,td{padding:9px 9px;font-size:12px;}
 }
 </style>
-<!-- Firebase loaded directly in head for reliability -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<!-- Firebase loaded via ES modules below -->
 </head>
 <body>
 
@@ -568,7 +565,11 @@ td{padding:12px 14px;font-size:13px;}
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, where, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 let drugs = [];
 let dispenses = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
 let currentFilter='all';
@@ -590,14 +591,14 @@ async function saveDrugsToFirebase() {
   }
   // Use batch write for efficiency
   try {
-    const batch = fbDb.batch();
+    const batch = writeBatch(fbDb);
     // Delete all existing drugs
-    const existing = await fbDb.collection('inv_drugs').get();
+    const existing = await getDocs(collection(fbDb,'inv_drugs'));
     existing.docs.forEach(d => batch.delete(d.ref));
     // Add all current drugs
     drugs.forEach(d => {
-      const ref = fbDb.collection('inv_drugs').doc(String(d.id));
-      batch.set(ref, {...d, updatedAt: firebase.firestore.FieldValue.serverTimestamp()});
+      const ref = doc(fbDb,'inv_drugs',String(d.id));
+      batch.set(ref, {...d, updatedAt: serverTimestamp()});
     });
     await batch.commit();
   } catch(e) {
@@ -613,7 +614,7 @@ async function loadDrugsFromFirebase() {
     return;
   }
   try {
-    const snap = await fbDb.collection('inv_drugs').get();
+    const snap = await getDocs(collection(fbDb,'inv_drugs'));
     if(!snap.empty) {
       drugs = snap.docs.map(d => d.data());
     } else {
@@ -769,9 +770,9 @@ function addDispense(){
   await saveDrugsToFirebase();
   // Also log activity to Firebase for admin dashboard
   if(fbDb) {
-    fbDb.collection('inv_activity').add({
+    addDoc(collection(fbDb,'inv_activity'),{
       ...entry,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: serverTimestamp()
     }).catch(e=>console.warn('Activity log error:', e));
   }
   renderInventory();renderDispense();updateDispSel();
@@ -2352,24 +2353,22 @@ const FB_CONFIG = {
   appId:"1:880532245730:web:82f0b388cab7fba4ed62bb"
 };
 
-let fbApp=null, fbAuth=null, fbDb=null, currentUser=null, currentUserData=null;
+// ── FIREBASE INIT (Modular v10) ──
+const fbApp = initializeApp(FB_CONFIG);
+const fbAuth = getAuth(fbApp);
+const fbDb = getFirestore(fbApp);
+let currentUser = null, currentUserData = null;
 
-// ── FIREBASE INIT ──
-const FB_APP = firebase.initializeApp(FB_CONFIG);
-fbApp = FB_APP;
-fbAuth = firebase.auth();
-fbDb = firebase.firestore();
-
-fbAuth.onAuthStateChanged(async user => {
+onAuthStateChanged(fbAuth, async user => {
   if(user) {
     currentUser = user;
     try {
-      const snap = await fbDb.collection('inv_users').where('uid','==',user.uid).get();
+      const snap = await getDocs(query(collection(fbDb,'inv_users'), where('uid','==',user.uid)));
       if(!snap.empty) {
         currentUserData = snap.docs[0].data();
       } else {
         currentUserData = {name:'Admin',role:'admin',uid:user.uid,email:user.email,permissions:{}};
-        await fbDb.collection('inv_users').doc(user.uid).set(currentUserData);
+        await setDoc(doc(fbDb,'inv_users',user.uid), currentUserData);
       }
       await loadDrugsFromFirebase();
       renderInventory(); updateAlerts(); updateDispSel();
@@ -2529,7 +2528,7 @@ window.doLogin = async function() {
   // Convert employee ID to email format for Firebase
   const email = empId + '@pharma.inv';
   try {
-    await fbAuth.signInWithEmailAndPassword(email, pass);
+    await signInWithEmailAndPassword(fbAuth, email, pass);
   } catch(e) {
     err.textContent = 'رقم وظيفي أو كلمة مرور غير صحيحة';
     err.style.display='block';
@@ -2537,7 +2536,7 @@ window.doLogin = async function() {
 };
 
 window.doLogout = async function() {
-  await fbAuth.signOut();
+  await signOut(fbAuth);
 };
 
 window.addUser = async function() {
@@ -2552,11 +2551,11 @@ window.addUser = async function() {
   const email = empId + '@pharma.inv'; // Convert to email for Firebase
   try {
     // Create secondary app to avoid logging out admin
-    const sec = firebase.initializeApp(FB_CONFIG, 'secondary'+Date.now());
-    const secAuth = sec.auth();
-    const cred = await secAuth.createUserWithEmailAndPassword(email, pass);
+    const secApp = initializeApp(FB_CONFIG, 'secondary'+Date.now());
+    const secAuth = getAuth(secApp);
+    const cred = await createUserWithEmailAndPassword(secAuth, email, pass);
     const uid = cred.user.uid;
-    await secAuth.signOut();
+    await signOut(secAuth);
     const permissions = {
       viewInv:document.getElementById('p-view-inv').checked,
       addDrug:document.getElementById('p-add-drug').checked,
@@ -2569,7 +2568,7 @@ window.addUser = async function() {
       export:document.getElementById('p-export').checked,
       viewNarc:document.getElementById('p-narc').checked,
     };
-    await fbDb.collection('inv_users').doc(uid).set({name,empId,email,role,dept,uid,permissions});
+    await setDoc(doc(fbDb,'inv_users',uid),{name,empId,email,role,dept,uid,permissions});
     showMsg('✅ تم إضافة المستخدم');
     document.getElementById('add-user-modal').style.display='none';
     loadUsers();
@@ -2578,7 +2577,7 @@ window.addUser = async function() {
 
 async function loadUsers() {
   if(!fbDb) return;
-  const snap = await fbDb.collection('inv_users').get();
+  const snap = await getDocs(collection(fbDb,'inv_users'));
   const roleLabels={admin:'👑 أدمن','pharmacy-in':'🏥 صيدلية داخلية','pharmacy-out':'🏪 صيدلية خارجية',warehouse:'🏭 مستودع',custodian:'🔑 أمين عهدة'};
   document.getElementById('users-list').innerHTML = snap.empty ? '<div class="empty-state"><div class="icon">👥</div><p>لا يوجد مستخدمون</p></div>' :
     snap.docs.map(d => {
@@ -2616,12 +2615,12 @@ window.updatePerm = async function(uid, key, val) {
   if(!fbDb) return;
   const updateData = {};
   updateData['permissions.' + key] = val;
-  await fbDb.collection('inv_users').doc(uid).update(updateData);
+  await updateDoc(doc(fbDb,'inv_users',uid),updateData);
   showMsg('✅ تم تحديث الصلاحية');
 };
 
 window.deleteUser = async function(uid, name) {
-  await fbDb.collection('inv_users').doc(uid).delete();
+  await deleteDoc(doc(fbDb,'inv_users',uid));
   showMsg('🗑️ تم حذف '+name);
   loadUsers();
 };
@@ -2636,7 +2635,7 @@ async function loadDashboard() {
   document.getElementById('d-expired').textContent = drugsLocal.filter(d=>getDaysLeft(d.exp||'')<0).length;
 
   // Get pharmacy requests from Firebase for pending count
-  const reqSnap = await fbDb.collection('pharm_requests').get();
+  const reqSnap = await getDocs(collection(fbDb,'pharm_requests'));
   const allReqs = reqSnap.docs.map(d=>({id:d.id,...d.data()}));
   document.getElementById('d-pending').textContent = allReqs.filter(r=>r.status==='pending').length;
 
@@ -2645,7 +2644,7 @@ async function loadDashboard() {
   actWrap.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:12px">⏳ جاري التحميل...</div>';
 
   // Get dispense activities from Firebase
-  const actSnap = await fbDb.collection('inv_activity').get().catch(()=>({docs:[]}));
+  const actSnap = await getDocs(collection(fbDb,'inv_activity')).catch(()=>({docs:[]}));
   const fbActs = actSnap.docs.map(d=>({
     time: d.data().createdAt?.seconds ? d.data().createdAt.seconds*1000 : new Date(d.data().date||0).getTime(),
     label: `${d.data().type==='out'?'📤 صرف':'📥 استلام'} — ${d.data().drugName||''} (${d.data().qty||0})`,
@@ -2798,7 +2797,7 @@ window.submitPharmacyRequest = async function() {
   if(!currentUser||!fbDb) { showMsg('⚠️ سجّل دخول أولاً'); return; }
   if(!requestItems.length) { showMsg('⚠️ أضف أدوية للقائمة أولاً'); return; }
   const note = document.getElementById('preq-note').value.trim();
-  await fbDb.collection('pharm_requests').add({
+  await addDoc(collection(fbDb,'pharm_requests'),{
     items: requestItems,
     note,
     status: 'pending',
@@ -2806,26 +2805,26 @@ window.submitPharmacyRequest = async function() {
     fromName: currentUserData.name,
     fromRole: currentUserData.role,
     fromDept: currentUserData.dept||'',
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    createdAt: serverTimestamp()
   });
   // Notify warehouse users
-  const wSnap = await fbDb.collection('inv_users').where('role','==','warehouse').get();
+  const wSnap = await getDocs(query(collection(fbDb,'inv_users'),where('role','==','warehouse').get();
   for(const u of wSnap.docs) {
-    await fbDb.collection('inv_notifs').add({
+    await addDoc(collection(fbDb,'inv_notifs'),{
       toUid: u.data().uid,
       message: `📝 طلب جديد من ${currentUserData.name||currentUserData.dept||''} — ${requestItems.length} صنف`,
       read: false,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: serverTimestamp()
     });
   }
   // Also notify admin
-  const aSnap = await fbDb.collection('inv_users').where('role','==','admin').get();
+  const aSnap = await getDocs(query(collection(fbDb,'inv_users'),where('role','==','admin').get();
   for(const u of aSnap.docs) {
-    await fbDb.collection('inv_notifs').add({
+    await addDoc(collection(fbDb,'inv_notifs'),{
       toUid: u.data().uid,
       message: `📝 طلب جديد من ${currentUserData.name||''} — ${requestItems.length} صنف`,
       read: false,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: serverTimestamp()
     });
   }
   playReqSound();
@@ -2859,9 +2858,7 @@ function loadMyPharmRequests() {
   const stColors = {pending:'var(--warn)', approved:'var(--success)', rejected:'var(--danger)', delivered:'var(--accent2)'};
 
   // Real-time listener
-  fbDb.collection('pharm_requests')
-    .where('fromUid', '==', currentUser.uid)
-    .onSnapshot(snap => {
+  onSnapshot(query(collection(fbDb,'pharm_requests'), where('fromUid','==',currentUser.uid)), snap => {
       if(!snap || snap.empty) {
         wrap.innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>لا توجد طلبات بعد</p></div>';
         return;
@@ -2904,7 +2901,7 @@ window.setWhFilter = function(f,btn) {
 async function loadWarehouseRequests() {
   if(!fbDb) return;
   // Avoid compound index - filter manually
-  const snap = await fbDb.collection('pharm_requests').get();
+  const snap = await getDocs(collection(fbDb,'pharm_requests'));
   let allDocs = snap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
   if(whFilter!=='all') allDocs = allDocs.filter(d=>d.data().status===whFilter);
   const wrap = document.getElementById('wh-requests-list');
@@ -2954,7 +2951,7 @@ async function loadWarehouseRequests() {
 
 window.approveRequest = async function(id, fromUid) {
   const note = document.getElementById('wh-note-'+id)?.value.trim()||'';
-  const snap = await fbDb.collection('pharm_requests').doc(id).get();
+  const snap = await getDoc(doc(fbDb,'pharm_requests',id));
   const r = snap.data();
   // Get updated quantities from input fields
   const updatedItems = (r.items||[]).map((item,i)=>{
@@ -2971,23 +2968,23 @@ window.approveRequest = async function(id, fromUid) {
   });
   await saveDrugsToFirebase();
   renderInventory();
-  await fbDb.collection('pharm_requests').doc(id).update({status:'approved',items:updatedItems,warehouseNote:note,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`✅ تمت الموافقة على طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await updateDoc(doc(fbDb,'pharm_requests',id),{status:'approved',items:updatedItems,warehouseNote:note,updatedAt:serverTimestamp()});
+  await addDoc(collection(fbDb,'inv_notifs'),{toUid:fromUid,message:`✅ تمت الموافقة على طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:serverTimestamp()});
   showMsg('✅ تمت الموافقة');
   loadWarehouseRequests();
 };
 
 window.rejectRequest = async function(id, fromUid) {
   const note = document.getElementById('wh-note-'+id)?.value.trim()||'';
-  await fbDb.collection('pharm_requests').doc(id).update({status:'rejected',warehouseNote:note,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`❌ تم رفض طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await updateDoc(doc(fbDb,'pharm_requests',id),{status:'rejected',warehouseNote:note,updatedAt:serverTimestamp()});
+  await addDoc(collection(fbDb,'inv_notifs'),{toUid:fromUid,message:`❌ تم رفض طلبك من المستودع${note?' — '+note:''}`,read:false,createdAt:serverTimestamp()});
   showMsg('تم الرفض');
   loadWarehouseRequests();
 };
 
 window.markDelivered = async function(id, fromUid) {
-  await fbDb.collection('pharm_requests').doc(id).update({status:'delivered',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
-  await fbDb.collection('inv_notifs').add({toUid:fromUid,message:`📦 تم تسليم طلبك من المستودع`,read:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  await updateDoc(doc(fbDb,'pharm_requests',id),{status:'delivered',updatedAt:serverTimestamp()});
+  await addDoc(collection(fbDb,'inv_notifs'),{toUid:fromUid,message:`📦 تم تسليم طلبك من المستودع`,read:false,createdAt:serverTimestamp()});
   showMsg('📦 تم التسليم');
   loadWarehouseRequests();
 };
@@ -3023,7 +3020,7 @@ function applyUserPermissions() {
 // Setup real-time notifications listener
 function setupNotifListener() {
   if(!fbDb||!currentUser) return;
-  fbDb.collection('inv_notifs').where('toUid','==',currentUser.uid).where('read','==',false)
+  getDocs(query(collection(fbDb,'inv_notifs'),where('toUid','==',currentUser.uid).where('read','==',false)
     .onSnapshot(snap=>{
       snap.docChanges().forEach(change=>{
         if(change.type==='added') {
