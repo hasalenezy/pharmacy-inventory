@@ -282,9 +282,86 @@ td{padding:12px 14px;font-size:13px;}
   <button class="tab-btn" onclick="switchTab('reports',this)">📊 التقارير</button>
   <button class="tab-btn" onclick="switchTab('monthly',this)">📅 التقرير الشهري</button>
   <button class="tab-btn" onclick="switchTab('catalog',this)">📚 قائمة الأدوية</button>
+  <div id="req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('pharmacy-req',this)">📝 طلب أدوية</button></div>
+  <div id="wh-req-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('wh-requests',this)">📦 الطلبات الواردة</button></div>
+  <div id="wh-inv-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('wh-inventory',this)">💊 أدوية المستودع</button></div>
+  <div id="disp-tab-btn" style="display:none"><button class="tab-btn" onclick="switchTab('dispense',this)">🔄 حركة الصرف</button></div>
 </div>
 
 <div class="main">
+
+<!-- TAB: PHARMACY REQUEST -->
+<div class="tab-content" id="tab-pharmacy-req">
+  <div class="add-section">
+    <div class="section-title">📝 طلب أدوية من المستودع</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field" style="flex:2;min-width:180px">
+        <label>اسم الدواء</label>
+        <div style="position:relative">
+          <input type="text" id="preq-drug" placeholder="ابحث عن الدواء..." autocomplete="off"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;"
+            oninput="onReqDrugSearch()">
+          <div id="req-drug-sug" style="position:absolute;top:100%;right:0;left:0;background:var(--surface);border:1px solid var(--accent);border-radius:10px;z-index:100;max-height:200px;overflow-y:auto;display:none;margin-top:4px;box-shadow:0 8px 20px rgba(0,0,0,0.15)"></div>
+        </div>
+      </div>
+      <div class="field" style="width:100px">
+        <label>الكمية</label>
+        <input type="number" id="preq-qty" min="1" placeholder="0"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+      </div>
+      <button onclick="addToReqList()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 16px;color:var(--accent);font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer;align-self:flex-end">➕ أضف</button>
+    </div>
+    <div id="req-items-list" style="margin-bottom:12px"><div style="font-size:13px;color:var(--text-muted);padding:8px">لم تضف أي أدوية بعد</div></div>
+    <div class="field" style="margin-bottom:12px">
+      <label>ملاحظة لموظف المستودع</label>
+      <textarea id="preq-note" placeholder="أي تفاصيل..." style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;resize:vertical;min-height:60px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="submitPharmReq()" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:10px;padding:10px 24px;color:#000;font-family:Cairo,sans-serif;font-weight:700;font-size:13px;cursor:pointer">📤 إرسال للمستودع</button>
+      <button onclick="clearReqList()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--danger);font-family:Cairo,sans-serif;font-size:13px;cursor:pointer">🗑️ مسح</button>
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <div class="section-title">📋 طلباتي السابقة</div>
+    <div id="my-pharm-reqs"><div class="empty-state"><div class="icon">📋</div><p>لا توجد طلبات</p></div></div>
+  </div>
+</div>
+
+<!-- TAB: WAREHOUSE REQUESTS -->
+<div class="tab-content" id="tab-wh-requests">
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="filter-btn active" onclick="setWhF('all',this)">الكل</button>
+    <button class="filter-btn" onclick="setWhF('pending',this)">⏳ معلقة</button>
+    <button class="filter-btn" onclick="setWhF('approved',this)">✅ موافق</button>
+    <button class="filter-btn" onclick="setWhF('rejected',this)">❌ مرفوض</button>
+    <button class="filter-btn" onclick="setWhF('delivered',this)">📦 مُسلَّم</button>
+  </div>
+  <div id="wh-reqs-list"><div class="empty-state"><div class="icon">📦</div><p>لا توجد طلبات</p></div></div>
+</div>
+
+<!-- TAB: WAREHOUSE INVENTORY (read-only) -->
+<div class="tab-content" id="tab-wh-inventory">
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <input type="text" id="wh-inv-search" placeholder="🔍 ابحث..." oninput="renderWhInv()"
+      style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+    <select id="wh-inv-filter" onchange="renderWhInv()"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;color:var(--text);font-family:Cairo,sans-serif;font-size:13px;outline:none;">
+      <option value="all">كل الأدوية</option>
+      <option value="ok">✅ سليمة</option>
+      <option value="warn">⚠️ تنتهي قريباً</option>
+      <option value="expired">❌ منتهية</option>
+      <option value="narcotic">🔴 مخدرة</option>
+      <option value="psycho">🟣 نفسية</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>اسم الدواء</th><th>الكمية</th><th>تاريخ الانتهاء</th><th>الحالة</th></tr></thead>
+      <tbody id="wh-inv-list"></tbody>
+    </table>
+    <div class="empty-state" id="wh-inv-empty" style="display:none"><div class="icon">💊</div><p>لا توجد أدوية</p></div>
+  </div>
+</div>
 
 <!-- TAB: DASHBOARD (admin only) -->
 <div class="tab-content" id="tab-dashboard">
@@ -2237,6 +2314,354 @@ document.getElementById('disp-modal').addEventListener('click',function(e){if(e.
 renderInventory();
 updateAlerts();
 updateDispSel();
+updateDates();
+setInterval(updateDates,60000);
+// ═══ PHARMACY REQUEST SYSTEM ═══
+let reqItems = [];
+let whFilter = 'all';
+
+window.onReqDrugSearch = function() {
+  const q = document.getElementById('preq-drug').value.trim().toLowerCase();
+  const sug = document.getElementById('req-drug-sug');
+  if(q.length<2){sug.style.display='none';return;}
+  const matches = DRUG_DB.filter(d=>d.ar.includes(q)||d.name.toLowerCase().includes(q)).slice(0,8);
+  if(!matches.length){sug.style.display='none';return;}
+  sug.innerHTML = matches.map(d=>`
+    <div onclick="selReqDrug('${d.ar} ${d.conc}')"
+      style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);"
+      onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+      <div style="font-weight:700;font-size:13px">${d.ar} <span style="color:var(--accent);font-size:12px">${d.conc}</span></div>
+      <div style="font-size:11px;color:var(--text-muted)">${d.name} — ${d.form} ${d.cat==='narcotic'?'🔴':d.cat==='psycho'?'🟣':''}</div>
+    </div>`).join('');
+  sug.style.display='block';
+};
+
+window.selReqDrug = function(name) {
+  document.getElementById('preq-drug').value=name;
+  document.getElementById('req-drug-sug').style.display='none';
+  document.getElementById('preq-qty').focus();
+};
+
+window.addToReqList = function() {
+  const drug=document.getElementById('preq-drug').value.trim();
+  const qty=+document.getElementById('preq-qty').value;
+  if(!drug){showMsg('⚠️ أدخل اسم الدواء');return;}
+  if(!qty||qty<=0){showMsg('⚠️ أدخل الكمية');return;}
+  reqItems.push({drug,qty,id:Date.now()});
+  document.getElementById('preq-drug').value='';
+  document.getElementById('preq-qty').value='';
+  document.getElementById('req-drug-sug').style.display='none';
+  renderReqList();
+};
+
+function renderReqList() {
+  const wrap=document.getElementById('req-items-list');
+  if(!reqItems.length){wrap.innerHTML='<div style="font-size:13px;color:var(--text-muted);padding:8px">لم تضف أي أدوية بعد</div>';return;}
+  wrap.innerHTML=reqItems.map(i=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:10px;margin-bottom:6px">
+      <div style="font-weight:600;font-size:13px">${i.drug}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${i.qty}</span>
+        <button onclick="removeReqItem(${i.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+window.removeReqItem = function(id) {
+  reqItems=reqItems.filter(i=>i.id!==id);
+  renderReqList();
+};
+
+window.clearReqList = function() {
+  reqItems=[];
+  renderReqList();
+  document.getElementById('preq-note').value='';
+};
+
+window.submitPharmReq = async function() {
+  if(!currentUser||!fbDb){showMsg('⚠️ سجّل دخول أولاً');return;}
+  if(!reqItems.length){showMsg('⚠️ أضف أدوية للقائمة');return;}
+  const note=document.getElementById('preq-note').value.trim();
+  await fbDb.collection('pharm_requests').add({
+    items:reqItems, note, status:'pending',
+    fromUid:currentUser.uid, fromName:currentUserData.name,
+    fromRole:currentUserData.role, fromDept:currentUserData.dept||'',
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  // Log to activity
+  await fbDb.collection('inv_activity').add({
+    type:'request', action:'طلب أدوية',
+    details:`${reqItems.length} صنف من ${currentUserData.name}`,
+    by:currentUserData.name, byRole:currentUserData.role,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  showMsg('✅ تم إرسال الطلب');
+  clearReqList();
+  loadMyPharmReqs();
+};
+
+function loadMyPharmReqs() {
+  if(!fbDb||!currentUser) return;
+  const wrap=document.getElementById('my-pharm-reqs');
+  if(!wrap) return;
+  fbDb.collection('pharm_requests').where('fromUid','==',currentUser.uid)
+    .onSnapshot(snap=>{
+      if(snap.empty){wrap.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>لا توجد طلبات</p></div>';return;}
+      const docs=snap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
+      const stL={pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 مُسلَّم'};
+      const stC={pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+      wrap.innerHTML=docs.map(d=>{
+        const r=d.data();
+        const dt=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleString('ar-SA'):'';
+        const color=stC[r.status]||'var(--warn)';
+        return `<div style="padding:14px 16px;border-bottom:1px solid var(--border);border-right:3px solid ${color}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div>
+              <div style="font-weight:700;font-size:13px">طلب — ${r.items?.length||0} صنف</div>
+              <div style="font-size:11px;color:var(--text-muted)">${dt}</div>
+              ${r.note?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📝 ملاحظتك: ${r.note}</div>`:''}
+              ${r.warehouseNote?`<div style="font-size:12px;color:var(--warn);margin-top:4px;padding:6px 10px;background:#f59e0b10;border-radius:8px">🏭 رد المستودع: ${r.warehouseNote}</div>`:''}
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;background:${color}18;color:${color}">${stL[r.status]||r.status}</span>
+          </div>
+          <div>${(r.items||[]).map(i=>`<span style="font-size:11px;background:var(--surface2);padding:2px 8px;border-radius:20px;margin-left:4px">${i.drug} (${i.qty})</span>`).join('')}</div>
+        </div>`;
+      }).join('');
+    });
+}
+
+// ═══ WAREHOUSE REQUESTS ═══
+window.setWhF = function(f,btn) {
+  whFilter=f;
+  document.querySelectorAll('#tab-wh-requests .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  loadWhReqs(f);
+};
+
+function loadWhReqs(filter='all') {
+  if(!fbDb) return;
+  const wrap=document.getElementById('wh-reqs-list');
+  if(!wrap) return;
+  fbDb.collection('pharm_requests').onSnapshot(snap=>{
+    let docs=snap.docs.sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0));
+    if(filter!=='all') docs=docs.filter(d=>d.data().status===filter);
+    if(!docs.length){wrap.innerHTML='<div class="empty-state"><div class="icon">📦</div><p>لا توجد طلبات</p></div>';return;}
+    const stL={pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 مُسلَّم'};
+    const stC={pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+    wrap.innerHTML=docs.map(d=>{
+      const r=d.data(); const id=d.id;
+      const dt=r.createdAt?new Date(r.createdAt.seconds*1000).toLocaleString('ar-SA'):'';
+      const color=stC[r.status]||'var(--warn)';
+      const canAct=r.status==='pending'||r.status==='approved';
+      const actions=r.status==='pending'?`
+        <div style="margin-top:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">تعديل الكميات قبل الموافقة:</div>
+          ${(r.items||[]).map((item,i)=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="flex:1;font-size:13px;font-weight:600">${item.drug}</span>
+              <input type="number" value="${item.qty}" min="0" id="wh-qty-${id}-${i}"
+                style="width:70px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 8px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;outline:none;">
+            </div>`).join('')}
+          <div style="margin-top:8px">
+            <input type="text" id="wh-note-${id}" placeholder="ملاحظة للصيدلية (اختياري)..."
+              style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-family:Cairo,sans-serif;font-size:12px;outline:none;margin-bottom:8px">
+          </div>
+          <div style="display:flex;gap:6px">
+            <button onclick="approveWhReq('${id}','${r.fromUid}')" style="background:#10b98120;border:1px solid #10b98140;border-radius:8px;padding:6px 14px;color:var(--success);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">✅ موافقة</button>
+            <button onclick="rejectWhReq('${id}','${r.fromUid}')" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:6px 14px;color:var(--danger);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">❌ رفض</button>
+          </div>
+        </div>`:r.status==='approved'?`
+        <div style="margin-top:8px">
+          <button onclick="deliverWhReq('${id}','${r.fromUid}')" style="background:#f59e0b20;border:1px solid #f59e0b40;border-radius:8px;padding:6px 14px;color:var(--warn);font-family:Cairo,sans-serif;font-size:12px;cursor:pointer;font-weight:700">📦 تم التسليم</button>
+        </div>`:'';
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-weight:700;font-size:14px">من: ${r.fromName||r.fromDept||''}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${dt} | ${r.items?.length||0} صنف</div>
+            ${r.note?`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">📝 ${r.note}</div>`:''}
+            ${r.warehouseNote?`<div style="font-size:12px;color:var(--warn);margin-top:4px">🏭 ملاحظتك: ${r.warehouseNote}</div>`:''}
+          </div>
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;background:${color}18;color:${color}">${stL[r.status]||r.status}</span>
+        </div>
+        <div style="margin-bottom:8px">${(r.items||[]).map(i=>`<span style="font-size:11px;background:var(--surface);padding:2px 8px;border-radius:20px;margin-left:4px">${i.drug} (${i.qty})</span>`).join('')}</div>
+        ${actions}
+      </div>`;
+    }).join('');
+  });
+}
+
+window.approveWhReq = async function(id,fromUid) {
+  const snap=await fbDb.collection('pharm_requests').doc(id).get();
+  const r=snap.data();
+  const note=document.getElementById('wh-note-'+id)?.value.trim()||'';
+  const updatedItems=(r.items||[]).map((item,i)=>{
+    const el=document.getElementById(`wh-qty-${id}-${i}`);
+    return{...item,qty:el?(+el.value||item.qty):item.qty};
+  });
+  // Deduct from inventory
+  updatedItems.forEach(item=>{
+    const d=drugs.find(x=>(x.name||x.nameAr||'').toLowerCase().includes(item.drug.toLowerCase()));
+    if(d) d.qty=Math.max(0,(d.qty||0)-item.qty);
+  });
+  save();renderInventory();updateAlerts();
+  await fbDb.collection('pharm_requests').doc(id).update({
+    status:'approved',items:updatedItems,warehouseNote:note,
+    updatedBy:currentUserData.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await fbDb.collection('inv_activity').add({
+    type:'approve',action:'موافقة على طلب',
+    details:`${updatedItems.length} صنف لـ ${r.fromName}${note?' — '+note:''}`,
+    by:currentUserData.name,byRole:currentUserData.role,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  showMsg('✅ تمت الموافقة');
+};
+
+window.rejectWhReq = async function(id,fromUid) {
+  const note=document.getElementById('wh-note-'+id)?.value.trim()||'';
+  const snap=await fbDb.collection('pharm_requests').doc(id).get();
+  const r=snap.data();
+  await fbDb.collection('pharm_requests').doc(id).update({
+    status:'rejected',warehouseNote:note,
+    updatedBy:currentUserData.name,updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await fbDb.collection('inv_activity').add({
+    type:'reject',action:'رفض طلب',
+    details:`رفض طلب ${r.fromName}${note?' — '+note:''}`,
+    by:currentUserData.name,byRole:currentUserData.role,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  showMsg('تم الرفض');
+};
+
+window.deliverWhReq = async function(id,fromUid) {
+  await fbDb.collection('pharm_requests').doc(id).update({
+    status:'delivered',updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  showMsg('📦 تم التسليم');
+};
+
+// ═══ WAREHOUSE INVENTORY READ-ONLY ═══
+window.renderWhInv = function() {
+  const q=(document.getElementById('wh-inv-search')?.value||'').trim().toLowerCase();
+  const filter=document.getElementById('wh-inv-filter')?.value||'all';
+  let list=drugs.filter(d=>{
+    const name=(d.name||d.nameAr||'').toLowerCase();
+    const matchQ=!q||name.includes(q);
+    if(!matchQ) return false;
+    const days=d.exp?Math.floor((new Date(d.exp)-new Date())/86400000):999;
+    if(filter==='ok') return days>=90;
+    if(filter==='warn') return days>=0&&days<90;
+    if(filter==='expired') return days<0;
+    if(filter==='narcotic') return d.category==='narcotic'||d.cat==='narcotic';
+    if(filter==='psycho') return d.category==='psycho'||d.cat==='psycho';
+    return true;
+  }).sort((a,b)=>(new Date(a.exp||'9999'))-(new Date(b.exp||'9999')));
+
+  const tbody=document.getElementById('wh-inv-list');
+  const empty=document.getElementById('wh-inv-empty');
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  tbody.innerHTML=list.map((d,i)=>{
+    const days=d.exp?Math.floor((new Date(d.exp)-new Date())/86400000):999;
+    const expF=d.exp?new Date(d.exp).toLocaleDateString('ar',{year:'numeric',month:'2-digit',day:'2-digit'}):'—';
+    const st=days<0?{c:'#ef444440',t:'var(--danger)',l:'✕ منتهية'}:days<=90?{c:'#f59e0b40',t:'var(--warn)',l:`⚠ ${days} يوم`}:{c:'#10b98140',t:'var(--success)',l:'✓ سليمة'};
+    const cat=(d.category||d.cat)==='narcotic'?'<span style="font-size:10px;background:#ef444418;color:#ff6b6b;padding:2px 7px;border-radius:20px;font-weight:700">🔴</span>':(d.category||d.cat)==='psycho'?'<span style="font-size:10px;background:#7c3aed18;color:#a78bfa;padding:2px 7px;border-radius:20px;font-weight:700">🟣</span>':'';
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
+      <td><div style="font-weight:700">${d.name||d.nameAr||''} ${cat}</div><div style="font-size:10px;color:var(--text-muted)">${d.type||''}</div></td>
+      <td><span style="background:#0099ff15;color:var(--accent2);padding:3px 10px;border-radius:20px;font-weight:700;font-size:12px">📦 ${d.qty||0}</span></td>
+      <td style="font-size:12px">${expF}</td>
+      <td><span style="background:${st.c};color:${st.t};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">${st.l}</span></td>
+    </tr>`;
+  }).join('');
+};
+
+// ═══ FIX DASHBOARD ACTIVITY ═══
+async function loadDashboard() {
+  const drugsLocal = drugs;
+  const dispLocal = JSON.parse(localStorage.getItem('pharma-disp')||'[]');
+  document.getElementById('d-total').textContent = drugsLocal.length;
+  document.getElementById('d-units').textContent = drugsLocal.reduce((s,d)=>s+(d.qty||0),0);
+  document.getElementById('d-expired').textContent = drugsLocal.filter(d=>getDaysLeft(d.exp||'')<0).length;
+
+  // Get Firebase data
+  let pendingCount=0, allActivities=[];
+  if(fbDb) {
+    const reqSnap=await fbDb.collection('pharm_requests').get().catch(()=>({docs:[]}));
+    pendingCount=reqSnap.docs.filter(d=>d.data().status==='pending').length;
+    const actSnap=await fbDb.collection('inv_activity').get().catch(()=>({docs:[]}));
+    allActivities=actSnap.docs.map(d=>({...d.data(),id:d.id}));
+    // Add requests as activities too
+    reqSnap.docs.forEach(d=>{
+      const r=d.data();
+      allActivities.push({
+        type:'request',
+        action:`طلب أدوية — ${r.items?.length||0} صنف`,
+        by:r.fromName||r.fromDept||'',
+        byRole:r.fromRole||'',
+        details:r.warehouseNote?`رد المستودع: ${r.warehouseNote}`:'',
+        status:r.status,
+        createdAt:r.createdAt
+      });
+    });
+    // Add local dispenses
+    dispLocal.forEach(e=>{
+      allActivities.push({
+        type:'dispense',
+        action:`${e.type==='out'?'📤 صرف':'📥 استلام'} — ${e.drugName||''} (${e.qty||0})`,
+        by:e.by||'',
+        byRole:'',
+        details:e.dest||'',
+        createdAt:{seconds:new Date(e.date||0).getTime()/1000}
+      });
+    });
+  }
+  document.getElementById('d-pending').textContent = pendingCount;
+
+  // Sort and display
+  allActivities.sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  const actWrap=document.getElementById('dash-activity');
+  if(!allActivities.length) {
+    actWrap.innerHTML='<div class="empty-state"><div class="icon">📋</div><p>لا توجد عمليات بعد</p></div>';
+  } else {
+    const stColors={pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+    actWrap.innerHTML=allActivities.slice(0,30).map(a=>{
+      const dt=a.createdAt?.seconds?new Date(a.createdAt.seconds*1000).toLocaleString('ar-SA'):'';
+      const statusBadge=a.status?`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:${stColors[a.status]||'var(--warn)'}18;color:${stColors[a.status]||'var(--warn)'};margin-right:6px">${{pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 مُسلَّم'}[a.status]||''}</span>`:'';
+      return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border);gap:10px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:13px">${a.action||a.details||''} ${statusBadge}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap">
+            ${a.by?`<span style="font-size:11px;color:var(--accent)">👤 ${a.by}</span>`:''}
+            ${a.details&&!a.status?`<span style="font-size:11px;color:var(--text-muted)">• ${a.details}</span>`:''}
+            <span style="font-size:11px;color:var(--text-muted)">${dt}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  loadUsers();
+  const now=new Date();
+  document.getElementById('dash-month').value=now.toISOString().slice(0,7);
+}
+
+// ═══ DATE: HIJRI + MILADI ═══
+function updateDates() {
+  const now=new Date();
+  try{document.getElementById('date-hijri').textContent=now.toLocaleDateString('ar-SA-u-ca-islamic',{weekday:'long',year:'numeric',month:'long',day:'numeric'});}catch(e){}
+  const miladiEl=document.getElementById('date-miladi');
+  if(miladiEl) miladiEl.textContent=now.toLocaleDateString('ar',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+// Fix expiry dates to show Miladi only
+function formatExpiry(exp) {
+  if(!exp) return '—';
+  return new Date(exp).toLocaleDateString('ar',{year:'numeric',month:'2-digit',day:'2-digit'});
+}
+
+
 
 // Load heavy libraries after page is ready
 loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
@@ -2337,32 +2762,60 @@ function buildTabsForRole() {
   if(!currentUserData) return;
   const role = currentUserData.role;
   const p = currentUserData.permissions || {};
+
   if(role === 'admin') {
+    // Admin sees all tabs
+    document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');
     applyUserPermissions();
     return;
   }
-  // Hide all tabs
+
+  // Non-admin: hide all default tabs
   document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='none');
   document.getElementById('dash-tab-btn').style.display='none';
-  // Show only relevant tabs per role
+
   if(role==='pharmacy-in'||role==='pharmacy-out') {
+    // Only: طلب أدوية
     document.getElementById('req-tab-btn').style.display='block';
-    setTimeout(()=>{
-      const btn=document.querySelector('#req-tab-btn .tab-btn');
-      if(btn)btn.click();
-    },300);
+    setTimeout(()=>{ const b=document.querySelector('#req-tab-btn .tab-btn'); if(b){b.classList.add('active');switchTab('pharmacy-req',b);loadMyPharmReqs();} },300);
+
   } else if(role==='warehouse') {
+    // طلبات واردة + عرض المخزون
     document.getElementById('wh-req-tab-btn').style.display='block';
-    setTimeout(()=>{
-      const btn=document.querySelector('#wh-req-tab-btn .tab-btn');
-      if(btn)btn.click();
-    },300);
+    document.getElementById('wh-inv-tab-btn').style.display='block';
+    setTimeout(()=>{ const b=document.querySelector('#wh-req-tab-btn .tab-btn'); if(b){b.classList.add('active');switchTab('wh-requests',b);loadWhReqs('all');} },300);
+
   } else if(role==='custodian') {
-    if(p.viewInv){const invBtn=document.querySelector('.tab-btn[onclick*="inventory"]');if(invBtn){invBtn.style.display='';invBtn.click();}}
-    if(p.approve){document.getElementById('wh-req-tab-btn').style.display='block';}
-    if(p.dispense){document.getElementById('disp-tab-btn')&&(document.getElementById('disp-tab-btn').style.display='block');}
+    // حركة الصرف + ما يُعطى من صلاحيات
+    document.getElementById('disp-tab-btn').style.display='block';
+    if(p.viewInv) {
+      const invBtn=document.querySelector('.tab-btn[onclick*="'inventory'"]');
+      if(invBtn) invBtn.style.display='';
+    }
+    if(p.approve) document.getElementById('wh-req-tab-btn').style.display='block';
+    setTimeout(()=>{ const b=document.querySelector('#disp-tab-btn .tab-btn'); if(b){b.classList.add('active');switchTab('dispense',b);} },300);
   }
+
   applyUserPermissions();
+}
+
+function applyUserPermissions() {
+  if(!currentUserData || currentUserData.role==='admin') return;
+  const p = currentUserData.permissions || {};
+  const role = currentUserData.role;
+  // Hide add-section for non-custodian roles that don't have addDrug
+  if(role!=='custodian' || !p.addDrug) {
+    document.querySelectorAll('.add-section').forEach(s=>{
+      // Keep dashboard sections visible for admin
+      if(!s.closest('#tab-dashboard')) s.style.display='none';
+    });
+  }
+  // Warehouse: show inventory read-only - no edit buttons
+  if(role==='warehouse') {
+    setTimeout(()=>{
+      document.querySelectorAll('.btn-edit,.btn-del,[onclick*="openEdit"],[onclick*="deleteDrug"],[onclick*="openDispModal"]').forEach(el=>el.style.display='none');
+    }, 800);
+  }
 }
 
 function onLogout() {
@@ -2373,13 +2826,6 @@ function onLogout() {
   if(ls){ls.style.display='flex';document.getElementById('auth-empid').value='';document.getElementById('auth-pass').value='';document.getElementById('auth-err').style.display='none';}
 }
 
-function applyUserPermissions() {
-  if(!currentUserData || currentUserData.role==='admin') return;
-  const p = currentUserData.permissions || {};
-  // Hide add section if no addDrug perm
-  const addSec = document.querySelector('.add-section');
-  if(addSec && !p.addDrug) addSec.style.display='none';
-}
 
 window.doLogin = async function() {
   const err = document.getElementById('auth-err');
@@ -2550,6 +2996,11 @@ window.exportDashMonthly = function() {
 // Update switchTab to handle dashboard
 const _origSwitchTab = switchTab;
 window.switchTab = function(name, btn) {
+  // Handle new tabs
+  if(name==='pharmacy-req') { setTimeout(loadMyPharmReqs,100); }
+  if(name==='wh-requests')  { setTimeout(()=>loadWhReqs(whFilter),100); }
+  if(name==='wh-inventory') { setTimeout(renderWhInv,100); }
+  if(name==='dashboard')    { setTimeout(loadDashboard,100); }
   _origSwitchTab(name, btn);
   if(name==='dashboard') loadDashboard();
 };
