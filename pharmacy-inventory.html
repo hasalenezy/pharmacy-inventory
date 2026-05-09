@@ -787,7 +787,7 @@ window.setFilter = function(f,btn){
   btn.classList.add('active');renderInventory();
 }
 
-function renderInventory(){
+window.renderInventory = function(){
   const q=document.getElementById('search').value.trim().toLowerCase();
   let list=drugs.filter(d=>d.name.toLowerCase().includes(q)||d.type.includes(q));
   let ok=0,warn=0,exp=0,totalQty=0;
@@ -902,7 +902,7 @@ window.downloadTemplate = function(){
   document.body.removeChild(a2);
 }
 
-function importExcel(e){
+window.importExcel = function(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
@@ -1048,7 +1048,7 @@ async window.snapPhoto = function(){
   const imgData=canvas.toDataURL('image/jpeg',0.85);
   await readWithClaude(imgData);
 }
-async function handleImageUpload(e){
+async window.handleImageUpload = function(e){
   const file=e.target.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=async ev=>await readWithClaude(ev.target.result);
@@ -1748,7 +1748,7 @@ const DRUG_DB = [
 
 let acIndex = -1;
 
-function onDrugInput(){
+window.onDrugInput = function(){
   const q = document.getElementById('inp-name').value.trim().toLowerCase();
   const list = document.getElementById('autocomplete-list');
   acIndex = -1;
@@ -1973,7 +1973,7 @@ function getDrugCategory(name) {
   return DRUG_CATEGORIES[name] || 'أخرى';
 }
 
-function renderCatalog() {
+window.renderCatalog = function() {
   const q = document.getElementById('catalog-search').value.trim().toLowerCase();
   const catFilter = document.getElementById('catalog-cat').value;
 
@@ -2262,7 +2262,7 @@ window.backupData = function(){
   showMsg('✅ تم حفظ النسخة الاحتياطية');
 }
 
-function restoreData(e){
+window.restoreData = function(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
@@ -2507,7 +2507,13 @@ window.buildTabsForRole = function() {
 // Keep for compatibility
 function applyUserPermissions() { buildTabsForRole(); }
 
-window.doLogin = async function() {
+// Attach login button event after DOM loads
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('login-btn');
+  if(btn) btn.addEventListener('click', () => doLogin());
+});
+
+async function doLogin() {
   const err = document.getElementById('auth-err');
   err.style.display='none';
   if(!fbAuth) {
@@ -3422,9 +3428,9 @@ window.switchTab = function(name, btn) {
     </div>
     <div style="margin-bottom:20px;text-align:right">
       <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">كلمة المرور</label>
-      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" id="auth-pass" placeholder="••••••••" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'" id="auth-pass-input" onkeydown="if(event.key==='Enter'){document.getElementById('login-btn').click();}">
     </div>
-    <button onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,#0077b6,#0096c7);border:none;border-radius:12px;padding:13px;color:#fff;font-family:Cairo,sans-serif;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(0,119,182,0.3)">دخول</button>
+    <button id="login-btn" style="width:100%;background:linear-gradient(135deg,#0077b6,#0096c7);border:none;border-radius:12px;padding:13px;color:#fff;font-family:Cairo,sans-serif;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px rgba(0,119,182,0.3)">دخول</button>
     <div id="auth-err" style="background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:8px 12px;font-size:12px;color:#ef4444;margin-top:12px;display:none"></div>
     <div style="margin-top:20px;font-size:11px;color:#64748b">© 2026 PharmaTec — جميع الحقوق محفوظة</div>
   </div>
