@@ -2522,9 +2522,12 @@ window.doLogin = async function() {
   err.style.background='';
   err.style.color='';
   err.style.borderColor='';
-  const empId = document.getElementById('auth-empid').value.trim();
+  let empId = document.getElementById('auth-empid').value.trim();
   const pass = document.getElementById('auth-pass').value;
   if(!empId||!pass) { err.textContent='أدخل الرقم الوظيفي وكلمة المرور'; err.style.display='block'; return; }
+  // Clean empId - remove @pharma.inv if browser autofilled it
+  if(empId.includes('@pharma.inv')) empId = empId.replace('@pharma.inv','');
+  if(empId.includes('@')) empId = empId.split('@')[0];
   // Convert employee ID to email format for Firebase
   const email = empId + '@pharma.inv';
   try {
@@ -3418,7 +3421,7 @@ window.switchTab = function(name, btn) {
     <p style="font-size:12px;color:#64748b;margin-bottom:28px">نظام إدارة المخزون الدوائي</p>
     <div style="margin-bottom:14px;text-align:right">
       <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">الرقم الوظيفي</label>
-      <input type="text" id="auth-empid" placeholder="أدخل رقمك الوظيفي" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'">
+      <input type="text" id="auth-empid" placeholder="أدخل رقمك الوظيفي" autocomplete="off" style="width:100%;background:#f8fafc;border:1px solid #d1dce8;border-radius:10px;padding:11px 14px;color:#1a2332;font-family:Cairo,sans-serif;font-size:14px;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#0077b6'" onblur="this.style.borderColor='#d1dce8'">
     </div>
     <div style="margin-bottom:20px;text-align:right">
       <label style="display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:600">كلمة المرور</label>
